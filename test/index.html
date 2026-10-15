@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LINK · 关系实验室</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <a class="skip-link" href="#mission">跳到关卡操作</a>
+
+  <header class="site-header">
+    <a class="brand" href="./index.html">
+      <span class="brand-icon">⌘</span>
+      <strong>LINK<span>.</span></strong>
+      <em>关系实验室</em>
+    </a>
+
+    <div class="header-status">
+      <span class="status-dot"></span>
+      交互式图论探索
+    </div>
+
+    <button id="open-notebook">
+      发现手册
+      <span id="discovery-count">0 / 6</span>
+    </button>
+  </header>
+
+  <main>
+    <section class="intro">
+      <div>
+        <p class="eyebrow">SMALL CONNECTIONS. BIG IDEAS.</p>
+        <h1>换个角度，<span>连接世界。</span></h1>
+        <p>
+          拆掉一条线，改变一张网。
+          在六个小谜题里，发现关系的秘密。
+        </p>
+      </div>
+
+      <div class="progress-count">
+        <strong id="total-complete">00</strong>
+        <span>/ 06</span>
+        <small>实验完成</small>
+      </div>
+    </section>
+
+    <nav id="level-nav" class="level-nav" aria-label="实验关卡"></nav>
+
+    <section class="game-layout">
+      <div class="board-shell">
+        <div class="board-header">
+          <span id="board-caption">网络拓扑 / NETWORK</span>
+          <span id="board-code">EXPERIMENT 01</span>
+        </div>
+
+        <div class="board-area">
+          <svg
+            id="board"
+            viewBox="0 0 800 470"
+            role="group"
+            aria-label="交互式游戏棋盘">
+          </svg>
+        </div>
+
+        <div id="palette" class="palette" hidden></div>
+
+        <div class="board-footer">
+          <div id="legend"></div>
+
+          <div>
+            <button id="undo">↶ 撤销</button>
+            <button id="reset">↻ 重来</button>
+          </div>
+        </div>
+      </div>
+
+      <aside id="mission" class="mission">
+        <div class="mission-heading">
+          <span id="chapter"></span>
+          <span id="level-number">01</span>
+        </div>
+
+        <div id="mission-content"></div>
+
+        <div id="live-status" role="status" aria-live="polite"></div>
+
+        <div class="mission-actions">
+          <button id="primary-action" class="primary"></button>
+          <p id="quiet-note"></p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="bottom-note">
+      <span>✳</span>
+      <span id="bottom-note-text">
+        不需要公式，也不需要预备知识。只要动手试一试。
+      </span>
+    </section>
+  </main>
+
+  <footer>
+    <span>LINK LAB · 把抽象的关系，变成可以玩的发现。</span>
+    <span>6 个谜题 / 随时撤销 / 进度自动保存</span>
+  </footer>
+
+  <dialog id="notebook-dialog">
+    <div class="dialog-heading">
+      <div>
+        <p class="eyebrow">YOUR FIELD NOTES</p>
+        <h2>发现手册</h2>
+      </div>
+      <button id="close-notebook">关闭</button>
+    </div>
+
+    <p>先亲手发现，再给这个想法起个名字。</p>
+
+    <div id="notebook-entries"></div>
+
+    <button id="replay-all" class="primary" hidden>
+      从第一关再玩一次
+    </button>
+  </dialog>
+
+  <script src="game.js"></script>
+</body>
+</html>
