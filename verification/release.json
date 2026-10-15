@@ -1,0 +1,13 @@
+{
+  "file": "GraphLab.exe",
+  "bytes": 2230068,
+  "sha256": "9c53cd6f916df1282db66ed4c71494a425d722b4f086da3b1d580542bb86a464",
+  "tests": 19,
+  "ui_levels": 10,
+  "network": "loopback-http-only",
+  "interface": "constructivist HTML/CSS/SVG with text markers",
+  "palette": "#D92B2B #111111 #F2EDE4 #1E3A5F",
+  "layout": "portable-directory",
+  "runtime": "_internal",
+  "save": "data/progress.json"
+}

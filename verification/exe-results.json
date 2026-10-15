@@ -1,0 +1,11 @@
+{
+  "launch": "passed",
+  "exit_code": 0,
+  "http_assets": "passed",
+  "game_action": "passed",
+  "portable_runtime_copy": true,
+  "different_working_directory": true,
+  "save_relative_to_exe": "data/progress.json",
+  "network": "loopback HTTP",
+  "websocket": false
+}

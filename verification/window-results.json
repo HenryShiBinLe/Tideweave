@@ -1,0 +1,5 @@
+{
+  "packaged_window": "passed",
+  "window_close_stops_http": true,
+  "browser_profile_inside_project": true
+}

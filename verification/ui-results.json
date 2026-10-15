@@ -1,0 +1,62 @@
+{
+  "levels_passed": 10,
+  "stars": 30,
+  "keyboard": "passed",
+  "resume_without_reset": "passed",
+  "chapter_summaries": 5,
+  "responsive": [
+    {
+      "width": 1000,
+      "height": 720,
+      "font": 15.3,
+      "title": 33,
+      "overflow": false,
+      "nodeFont": 14,
+      "toolbarBottom": 709.296875
+    },
+    {
+      "width": 1440,
+      "height": 1000,
+      "font": 17.98,
+      "title": 47.52,
+      "overflow": false,
+      "nodeFont": 18.72,
+      "toolbarBottom": 974.828125
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "font": 20,
+      "title": 63.36,
+      "overflow": false,
+      "nodeFont": 23,
+      "toolbarBottom": 1052
+    },
+    {
+      "width": 3840,
+      "height": 2160,
+      "font": 20,
+      "title": 64,
+      "overflow": false,
+      "nodeFont": 23,
+      "toolbarBottom": 2132
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "font": 14,
+      "title": 26,
+      "overflow": false,
+      "nodeFont": 15,
+      "toolbarBottom": 830
+    }
+  ],
+  "javascript_errors": [],
+  "external_requests": [],
+  "websocket_connections": [],
+  "palette_audit": "passed",
+  "forbidden_effects": "none",
+  "emoji_nodes": false,
+  "left_level_sidebar": false,
+  "group_markers": 5
+}

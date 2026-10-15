@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>图论夜校 · GraphLab</title><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css"></head>
+<body data-screen="home">
+<a class="skip" href="#main">跳到游戏</a>
+<header class="topbar"><button id="back" class="plain" hidden>← 选关</button><span class="wordmark" data-print="GRAPH / PLAY">GRAPH / PLAY</span><div class="top-actions"><span id="total" class="mono"></span><button id="help" class="plain" hidden>玩法</button><button id="menu" class="plain">菜单</button></div></header>
+<main id="main">
+<section id="home" aria-label="章节选关">
+  <div class="poster">
+    <div class="poster-type"><p class="title-tag">图论夜校</p><h1>GRAPH<br><span>PLAY</span></h1><button id="continue" class="primary">开始游戏 <span aria-hidden="true">→</span></button></div>
+    <div class="poster-art"><svg viewBox="0 0 640 460" aria-hidden="true"><defs><pattern id="halftone" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.3" fill="#111111"/></pattern></defs><path d="M230 25A190 190 0 1 1 85 320" fill="none" stroke="#111111" stroke-width="38"/><path d="M244 69A145 145 0 1 1 130 304" fill="none" stroke="#D92B2B" stroke-width="4"/><path d="M378 160h198v238H378z" fill="url(#halftone)"/><path d="M20 365 470 115 327 388Z" fill="#D92B2B"/><path d="M390 92 626 92 626 109 390 109Z" fill="#111111" transform="rotate(-17 390 92)"/></svg><div class="chapter-seal"><span id="chapter-number" class="mono">01</span><h2 id="chapter-name">送信员</h2></div></div>
+  </div>
+  <nav id="chapters" aria-label="选择章节"></nav>
+  <div id="levels" aria-label="本章关卡"></div>
+</section>
+<section id="play" hidden aria-labelledby="title">
+  <div class="play-heading"><div class="level-title"><span id="level-number" class="mono"></span><h2 id="title"></h2></div><div id="metric" class="mono" aria-live="polite"></div></div>
+  <p id="goal"></p>
+  <div class="board-frame"><div id="board" tabindex="-1" aria-label="游戏地图"><svg id="roads" aria-hidden="true"></svg><div id="edge-controls"></div><div id="nodes"></div></div></div>
+  <div id="palette" aria-label="选择岛屿标记"></div>
+  <p id="status" role="status" aria-live="polite"></p>
+  <div class="toolbar"><div><button id="undo">撤销</button><button id="reset">重来</button><button id="hint">提示</button></div><button id="submit" class="primary">验收 →</button></div>
+</section>
+</main>
+<dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-top"><span id="dialog-eyebrow" class="mono"></span><button id="dialog-close" class="plain" aria-label="关闭">关闭</button></div><h2 id="dialog-title"></h2><div id="dialog-body"></div><div id="dialog-actions"></div></dialog>
+<script src="app.js"></script>
+</body></html>

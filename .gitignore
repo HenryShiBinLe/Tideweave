@@ -1,0 +1,15 @@
+# Local player data and dedicated browser profile
+/data/
+
+# Build and test scratch directories
+/.build/
+/.test-*/
+/.ui-test-*/
+/.exe-test-*/
+/.window-test-*/
+__pycache__/
+*.py[cod]
+
+# Temporary publishing tools (credentials are never copied here)
+/.publish-work/
+/.publish.py
