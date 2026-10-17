@@ -1,0 +1,29 @@
+{
+  "name": "tideweave",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tideweave - Lanzhou network puzzle game",
+  "main": "desktop/main.cjs",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "preview": "node scripts/preview.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "package": "npm run build && node scripts/package.mjs",
+    "verify:ui": "node scripts/verify-ui.mjs"
+  },
+  "dependencies": {
+    "graphology": "^0.26.0",
+    "graphology-components": "^1.5.4",
+    "graphology-shortest-path": "^2.1.0",
+    "lucide": "^0.468.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.3.6",
+    "electron": "^41.0.0",
+    "esbuild": "^0.25.0",
+    "playwright": "^1.56.0"
+  }
+}
