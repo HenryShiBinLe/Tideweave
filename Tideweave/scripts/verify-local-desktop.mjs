@@ -1,3 +1,4 @@
+import {uiClick,selectMission} from './ui-navigation.mjs';
 import {_electron as electron} from 'playwright';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -15,9 +16,9 @@ let app;
 try{
   app=await electron.launch({executablePath:path.join(root,'node_modules/electron/dist/electron.exe'),cwd:fixture,env,args:[fixture,'--disable-gpu']});
   const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.waitForSelector('[data-level="01-01.1"]');
+  await page.waitForSelector('[data-action="resume"]');
   assert.match(page.url(),/^file:/);
-  await page.locator('[data-level="01-01.1"]').click();
+  await page.locator('[data-action="resume"]').click();
   assert.equal(await page.locator('dialog').count(),0,'first level is not interrupted by a chapter briefing');
   assert.equal(await page.locator('.tw-task p').innerText(),levelById['01-01.1'].controls);
   assert.equal(await page.locator('.tw-header').count(),0);

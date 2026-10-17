@@ -1,4 +1,4 @@
-import { levels, levelById } from "./levels.mjs";
+import { levels, levelById, legacyLevelById } from "./levels.mjs";
 import { initialState, evaluate } from "./engine.mjs";
 import { walkEdges } from "./algorithms.mjs";
 const fresh = () => ({ version: 1, records: {}, last: levels[0].id, chapter: 1, summaries: [], briefings: [], settings: { sound: true, volume: 0.25, motion: true, speed: 1 } });
@@ -26,9 +26,13 @@ function normalize(value) {
   for (const l of levels) {
     const r = value.records[l.id];
     if (!r || typeof r !== "object") continue;
-    const best = r.best ? cleanState(l, r.best) : null;
+    const revision=l.revision??1,changed=(r.revision??1)!==revision;
+    const archived=r.legacyBest??(changed?r.best:null);
+    const legacyBest=archived?cleanState(legacyLevelById[l.id],archived):null;
+    const legacyResult=legacyBest?evaluate(legacyLevelById[l.id],legacyBest):null;
+    const best = !changed && r.best ? cleanState(l, r.best) : null;
     const result = best ? evaluate(l, best) : null;
-    p.records[l.id] = { passed: !!result?.pass, perfect: !!result?.perfect, attempts: Math.max(0, Math.min(1e5, Math.floor(Number(r.attempts) || 0))), hintUnlocked: !!r.hintUnlocked, state: cleanState(l, r.state), best: result?.pass ? best : null, bestMetric: result?.pass ? result.metric : null };
+    p.records[l.id] = { revision, legacyBest:legacyResult?.pass?legacyBest:null, legacy:!!legacyResult?.pass&&!result?.pass, passed: !!result?.pass||!!legacyResult?.pass, perfect: !!result?.perfect||!!legacyResult?.perfect, attempts: Math.max(0, Math.min(1e5, Math.floor(Number(r.attempts) || 0))), hintUnlocked: !!r.hintUnlocked, state: changed?initialState(l):cleanState(l, r.state), best: result?.pass ? best : null, bestMetric: result?.pass ? result.metric : null };
   }
   if (levelById[value.last]) p.last = value.last;
   if (Number.isInteger(value.chapter) && value.chapter >= 1 && value.chapter <= 5) p.chapter = value.chapter;
@@ -47,17 +51,19 @@ function recordAttempt(p, l, state, result) {
   if (!result.valid) return r;
   if (!l.tutorial) {
     r.attempts++;
-    if (r.attempts >= 3 && !result.perfect && !r.perfect) r.hintUnlocked = true;
+    if (r.attempts >= 3 && !result.perfect && !(r.best&&evaluate(l,r.best).perfect)) r.hintUnlocked = true;
   }
   if (result.pass) {
-    const improve = !r.passed || result.perfect && !r.perfect || (l.type === "matching" ? result.metric > r.bestMetric : result.metric < r.bestMetric);
+    const improve = !r.best || result.perfect && !evaluate(l,r.best).perfect || (l.type === "matching" ? result.metric > r.bestMetric : result.metric < r.bestMetric);
     if (improve) {
       r.best = structuredClone(state);
       r.bestMetric = result.metric;
     }
     r.passed = true;
     r.perfect ||= result.perfect;
+    r.legacy=false;
   }
+  r.revision=l.revision??1;
   return r;
 }
 export {

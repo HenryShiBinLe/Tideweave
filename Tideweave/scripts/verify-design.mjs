@@ -1,3 +1,4 @@
+import {uiClick,selectMission} from './ui-navigation.mjs';
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -13,13 +14,12 @@ const page=await browser.newPage({viewport:{width:1440,height:940},reducedMotion
 const errors=[],external=[],layouts=[];
 page.on('pageerror',e=>errors.push(e.message));
 page.on('request',r=>{if(/^https?:/.test(r.url())&&!r.url().startsWith(url))external.push(r.url());});
-const click=s=>page.locator(s).first().click();
+const click=s=>uiClick(page,s);
 const home=()=>click('.tw-mission-head [data-action="home"]');
 const open=async id=>{await click(`[data-chapter="${levelById[id].chapter}"]`);await click(`[data-level="${id}"]`);};
 
 try{
   await page.goto(url);
-  assert.equal(await page.locator('.tw-city-purpose strong').innerText(),chapters[0].purpose);
   await page.evaluate(()=>document.fonts.ready);
   assert.ok(await page.evaluate(()=>document.fonts.check('700 25px TideweaveSerif')),'bundled display font loaded');
   const variation=await page.locator('#tw-city').evaluate(c=>{
@@ -36,7 +36,7 @@ try{
   for(const ch of chapters.slice(1)){
     await click(`[data-chapter="${ch.id}"]`);
     assert.equal(await page.locator('dialog').count(),0,'browsing a chapter opens no briefing');
-    assert.equal(await page.locator('.tw-city-purpose strong').innerText(),ch.purpose);
+    assert.equal(await page.locator('.tw-campaign-summary p').innerText(),ch.purpose);
   }
   const seed=fresh();seed.settings.motion=false;seed.briefings=[1,2,3,4,5];
   for(const l of levels){const s=solution(l);recordAttempt(seed,l,s,evaluate(l,s));delete seed.records[l.id].state;}
@@ -44,7 +44,7 @@ try{
   for(const viewport of [{width:1440,height:940},{width:1280,height:720},{width:900,height:620},{width:720,height:620},{width:390,height:844}]){
     await page.setViewportSize(viewport);
     await page.screenshot({path:`verification/design-map-${viewport.width}.png`,fullPage:true});
-    for(const id of ['01-01.1','01-01.3','02-S1.1','03-02.2','03-04.2','04-01.3','04-02.2']){
+    for(const id of ['01-01.1','01-01.3','02-S1.1','03-02.2','03-04.2','04-01.3','04-02.2','04-02.3','02-S1.2']){
       await open(id);
       if(id==='01-01.3'||id==='04-01.3'){
         for(const [i,c] of solution(levelById[id])[id==='01-01.3'?'labels':'colors'].entries()){

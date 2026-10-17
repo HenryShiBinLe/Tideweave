@@ -1,5 +1,6 @@
 import {solids,faceTopology} from './solids.mjs';
 import {beginnerBrief} from './briefs.mjs';
+import {refineLevels} from './refinements.mjs';
 
 export const chapters = [
   {id:1,title:'脉启·失联',subtitle:'连通、遍历与强连通分量',scene:'通信网恢复',intro:'水网之间，先让每一座站点听见彼此。',summary:'沿线路能到达，才算相连。深入巡检需要回溯；信号按一跳一轮扩散；每个连通区域都能保留一棵无环的树。'},
@@ -153,6 +154,8 @@ out.find(l=>l.id==='03-03.3').edges[4].bend=[620,520];
 out.find(l=>l.id==='05-02.2').edges[5].bend=[850,290];
 out.find(l=>l.id==='05-03.3').edges[6].bend=[500,540];
 out.find(l=>l.id==='05-03.3').edges[7].bend=[500,40];
+export const legacyLevelById=Object.fromEntries(out.map(l=>[l.id,structuredClone(l)]));
+refineLevels(out);
 for(const level of levels) Object.assign(level,beginnerBrief(level));
 let previous=null;
 for(const l of levels.filter(l=>!l.optional)){l.requires=previous?[previous]:[];previous=l.id;}

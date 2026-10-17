@@ -23,6 +23,7 @@ class GameSession {
   save() {
     const r = this.progress.records[this.level.id] ??= { passed: false, perfect: false, attempts: 0, hintUnlocked: false };
     r.state = structuredClone(this.state);
+    r.revision = this.level.revision??1;
     this.progress.last = this.level.id;
   }
   reset() {

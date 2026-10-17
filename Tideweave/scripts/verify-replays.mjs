@@ -1,3 +1,4 @@
+import {uiClick,selectMission} from './ui-navigation.mjs';
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
@@ -15,7 +16,7 @@ progress.settings.motion = true; progress.settings.speed = 0.5; progress.briefin
 const server = await serve(), browser = await chromium.launch({channel:'msedge',headless:true});
 const page = await browser.newPage({viewport:{width:1440,height:940}}), errors = [];
 page.on('pageerror', e => errors.push(e.message));
-const click = selector => page.locator(selector).first().click();
+const click = selector => uiClick(page,selector);
 const seek = async index => page.locator('[data-frame]').evaluate((el, i) => {
   el.value = i === 'last' ? el.max : String(i); el.dispatchEvent(new Event('input', {bubbles:true}));
 }, index);
@@ -35,7 +36,7 @@ try {
     const pathIndex = algorithmReplay(levelById['04-03.2']).frames.findIndex(f => f.phase === 'path' && f.augmentation.length > 1);
     await seek(pathIndex); assert.ok(await page.locator('.replay-focus').count() >= 3);
     await page.screenshot({path:`verification/replay-matching-${width}.png`,fullPage:true});
-    await seek('last'); assert.equal(await page.locator('.network-edge.selected').count(), 3);
+    await seek('last'); assert.equal(await page.locator('.network-edge.selected').count(), 5);
     await click('[data-action="compare-replay"]'); await seek('last');
     assert.match(await page.locator('.tw-context-tools output').textContent(), /我的最佳/);
     await click('[data-action="edit"]'); assert.equal(await page.locator('.network-edge.selected').count(), 1);
@@ -47,8 +48,8 @@ try {
     await page.screenshot({path:`verification/replay-condensed-${width}.png`,fullPage:true});
     await click('.tw-mission-head [data-action="home"]');
     await enter('02-S1.2'); await seek('last');
-    assert.equal(await page.locator('.replay-matrix tbody tr').count(), 4);
-    assert.equal(await page.locator('.replay-matrix tbody tr').first().locator('td').last().textContent(), '6');
+    assert.equal(await page.locator('.replay-matrix tbody tr').count(), 5);
+    assert.equal(await page.locator('.replay-matrix tbody tr').nth(2).locator('td').nth(3).textContent(), '6');
     await page.screenshot({path:`verification/replay-floyd-${width}.png`,fullPage:true});
     await click('.tw-mission-head [data-action="home"]');
     await enter('03-02.2');

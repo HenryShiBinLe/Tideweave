@@ -1,3 +1,4 @@
+import {uiClick,selectMission} from './ui-navigation.mjs';
 import {chromium} from 'playwright';
 import {serve} from './preview.mjs';
 import fs from 'node:fs/promises';
@@ -9,7 +10,7 @@ const seeded=fresh();for(const l of levels){const s=solution(l);recordAttempt(se
 const server=await serve(),url=`http://127.0.0.1:${server.address().port}`,browser=await chromium.launch({channel:'msedge',headless:true,args:['--enable-unsafe-swiftshader']});
 const page=await browser.newPage({viewport:{width:1440,height:940}}),errors=[];
 page.on('pageerror',e=>errors.push(e.message));
-const click=s=>page.locator(s).first().click();
+const click=s=>uiClick(page,s);
 const open=async id=>{const l=levelById[id];await click(`[data-chapter="${l.chapter}"]`);await click(`[data-level="${id}"]`);};
 try{
   await page.goto(url);await page.evaluate(p=>localStorage.setItem('tideweave-progress',JSON.stringify(p)),seeded);await page.reload();
@@ -40,7 +41,7 @@ try{
   await open('05-01.1');await click('[data-mode="probe"]');await page.locator('[data-edge="3"]').press('Enter');assert.match(await page.locator('.graph-note').textContent(),/2 片/);await page.locator('[data-edge="0"]').press('Enter');assert.match(await page.locator('.graph-note').textContent(),/1 片/);await click('.tw-mission-head [data-action="home"]');
   await open('04-01.4');await page.locator('[data-node="0"]').press('Enter');await page.locator('[data-node="1"]').press('Enter');assert.equal(await page.locator('.region.conflict').count(),0,'no premature answer warning');await click('.tw-mission-head [data-action="home"]');
   await page.evaluate(p=>localStorage.setItem('tideweave-progress',JSON.stringify(p)),{...seeded,records:{...seeded.records,'01-04.2':{...seeded.records['01-04.2'],state:solution(levelById['01-04.2'])}}});await page.reload();await open('01-04.2');await click('[data-action="run"]');await page.waitForSelector('dialog');await click('[data-action="continue"]');assert.match(await page.locator('dialog').textContent(),/无环的树/);await click('[data-action="next-chapter"]');assert.equal(await page.locator('[data-action="ack-briefing"]').count(),1);assert.match(await page.locator('.tw-mission-head').textContent(),/01-04\.2/);await click('[data-action="ack-briefing"]');assert.match(await page.locator('.tw-mission-head').textContent(),/02-01\.1/);
-  const fallback=await browser.newPage();await fallback.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type==='webgl'||type==='webgl2'||type==='experimental-webgl')return null;return get.call(this,type,...args);};});await fallback.goto(url);await fallback.evaluate(p=>localStorage.setItem('tideweave-progress',JSON.stringify(p)),seeded);await fallback.reload();await fallback.locator('[data-chapter="4"]').click();await fallback.locator('[data-level="04-02.2"]').click();await fallback.waitForSelector('.net-svg');assert.equal(await fallback.locator('#tw-solid canvas').count(),0);await fallback.close();
+  const fallback=await browser.newPage();await fallback.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type==='webgl'||type==='webgl2'||type==='experimental-webgl')return null;return get.call(this,type,...args);};});await fallback.goto(url);await fallback.evaluate(p=>localStorage.setItem('tideweave-progress',JSON.stringify(p)),seeded);await fallback.reload();await uiClick(fallback,'[data-level="04-02.2"]');await fallback.waitForSelector('.net-svg');assert.equal(await fallback.locator('#tw-solid canvas').count(),0);await fallback.close();
   assert.deepEqual(errors,[]);await fs.writeFile('verification/interaction-results.json',JSON.stringify({pass:true,solidPickDesktop:true,solidPickMobile:true,netSynchronization:true,webglFallback:true,faultReset:true,noEarlyColorError:true,chapterAdvance:true,errors},null,2));
   console.log('Advanced interactions passed.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

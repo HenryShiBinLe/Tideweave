@@ -1,3 +1,4 @@
+import {uiClick,selectMission} from './ui-navigation.mjs';
 import {chromium} from 'playwright';
 import {serve} from './preview.mjs';
 import fs from 'node:fs/promises';
@@ -11,7 +12,7 @@ const server=await serve(),url=`http://127.0.0.1:${server.address().port}`;
 const browser=await chromium.launch({channel:'msedge',headless:true,args:['--enable-unsafe-swiftshader']});
 const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});
 const errors=[],external=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',req=>{if(/^https?:/.test(req.url())&&!req.url().startsWith(url))external.push(req.url());});
-const click=async selector=>{await page.locator(selector).first().click();};
+const click=selector=>uiClick(page,selector);
 const node=async i=>{
   const p=await page.locator(`[data-node="${i}"]`).evaluate(el=>{
     const target=el.querySelector('.station-body')??el.querySelector('text');
@@ -31,7 +32,7 @@ async function openLevel(l){
 async function run(){await click('[data-action="run"]');await page.waitForSelector('dialog');}
 const results=[];
 try{
-  await page.goto(url);assert.equal(await page.locator('[data-level]').count(),12);await page.screenshot({path:'verification/map-desktop.png',fullPage:true});
+  await page.goto(url);assert.equal(await page.locator('[data-action="resume"]').count(),1);await page.screenshot({path:'verification/map-desktop.png',fullPage:true});
   await click('[data-action="settings"]');assert.ok(await page.locator('dialog').isVisible());await click('[data-action="close"]');
   const first=levels[0];await openLevel(first);await node(0);await page.screenshot({path:'verification/first-level-desktop.png'});
   assert.equal(await page.locator('[data-action="hint"]').count(),0);

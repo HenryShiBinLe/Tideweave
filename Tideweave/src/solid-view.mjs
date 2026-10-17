@@ -52,7 +52,7 @@ class SolidView {
     light.position.set(-3, 5, 6);
     this.scene.add(light);
     this.meshes = this.spec.faces.map((face, id) => {
-      const ps = [], uvs = [], uv = face.length === 4 ? [[0, 0], [1, 0], [1, 1], [0, 1]] : [[0.5, 1], [0, 0], [1, 0]];
+      const ps = [], uvs = [], uv = face.map((_,i)=>[.5+.46*Math.cos(i*2*Math.PI/face.length),.5+.46*Math.sin(i*2*Math.PI/face.length)]);
       for (let t = 1; t < face.length - 1; t++) for (const j of [0, t, t + 1]) {
         ps.push(...this.spec.vertices[face[j]]);
         uvs.push(...uv[j]);

@@ -62,6 +62,8 @@ function graphBoard(l, s, ui = {}) {
     if (current) meta = '当前位置';
     if (l.type === "schedule") meta = `${n.duration - (s.boosts[i] ?? 0)} 天 · 加速 ${s.boosts[i]}`;
     if (l.type === "topo" && ord >= 0) meta = `顺序 ${ord + 1}`;
+    if (l.type === 'cycle') meta = ord < 0 ? '待排查' : ord === 0 ? '循环起点' : `环内第 ${ord+1} 项`;
+    if (l.type === 'floyd') meta = i === l.stage ? '本轮开放中转' : i < l.stage ? '已开放中转' : '只能起终，不可中转';
     if (s.labels[i] >= 0 && ["scc", "groups"].includes(l.type)) meta = `分组 ${s.labels[i] + 1}`;
     if (frame?.values) meta = `${frame.nodes.includes(i) ? '已确认' : '暂定'} ${Number.isFinite(frame.values[i]) ? frame.values[i] : '∞'}`;
     if (n.detail) meta = n.detail;
@@ -88,17 +90,18 @@ function netBoard(l, s, result) {
       const b = polygon[(j + 1) % polygon.length], vertices = spec.netVertices[i];
       const key = [vertices[j], vertices[(j + 1) % vertices.length]].sort((a2, b2) => a2 - b2).join("-");
       const edge = edges.find((e) => e.key === key), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-      return `<text class="net-edge-label" x="${mx + (x - mx) * 0.22}" y="${my + (y - my) * 0.22 + 4}" fill="${s.colors[i] < 0 ? "#273f36" : paletteText[s.colors[i]]}">${String(edge.id + 1).padStart(2, "0")}</text>`;
+      return `<text class="net-edge-label" x="${mx + (x - mx) * 0.16}" y="${my + (y - my) * 0.16 + 4}" fill="${s.colors[i] < 0 ? "#273f36" : paletteText[s.colors[i]]}">${String(edge.id + 1).padStart(2, "0")}</text>`;
     }).join("");
-    return `<g class="region ${result?.nodes?.includes(i) ? "conflict" : ""}" role="button" tabindex="0" data-node="${i}" aria-label="${spec.labels[i]}面，${s.colors[i] >= 0 ? colorNames[s.colors[i]] : "未着色"}"><polygon points="${polygon.map((p2) => p2.join(",")).join(" ")}" fill="${s.colors[i] < 0 ? "#e1e7de" : `url(#pat-${s.colors[i]})`}"/><text x="${x}" y="${y + 5}" fill="${s.colors[i] < 0 ? "#273f36" : paletteText[s.colors[i]]}">${spec.labels[i]}面</text>${markings}</g>`;
+    return `<g class="region ${result?.nodes?.includes(i) ? "conflict" : ""}" role="button" tabindex="0" data-node="${i}" aria-label="${spec.labels[i]}面，${s.colors[i] >= 0 ? colorNames[s.colors[i]] : "未着色"}"><polygon points="${polygon.map((p2) => p2.join(",")).join(" ")}" fill="${s.colors[i] < 0 ? "#e1e7de" : `url(#pat-${s.colors[i]})`}"/><text x="${x}" y="${y + 5}" fill="${s.colors[i] < 0 ? "#273f36" : paletteText[s.colors[i]]}">${spec.labels[i]}</text>${markings}</g>`;
   }).join("");
-  return `<svg class="graph-svg net-svg" viewBox="100 40 800 ${l.solid === "cube" ? 480 : 630}" role="group" aria-label="多面体展开图，面内棱号相同表示共享棱">${patternDefs()}${faces}</svg>`;
+  return `<svg class="graph-svg net-svg" viewBox="${spec.netViewBox??`100 40 800 ${l.solid === 'cube'?480:630}`}" role="group" aria-label="多面体展开图，面内棱号相同表示共享棱">${patternDefs()}${faces}</svg>`;
 }
 function floydTable(l, s) {
   const stage = floydStages(l)[l.stage];
+  const value=n=>Number.isFinite(n)?n:'不通';
   return `<div class="pair-grid">${l.nodes.flatMap((a, i) => l.nodes.filter((_, j) => j > i).map((b) => {
     const j = l.nodes.indexOf(b), key = `${i}-${j}`;
-    return `<button data-pair="${key}" class="pair-option ${s.pairs.includes(key) ? "selected" : ""}" aria-pressed="${s.pairs.includes(key)}"><span>${a.label}—${b.label}</span><b>${Number.isFinite(stage.before[i][j]) ? stage.before[i][j] : "∞"}</b></button>`;
+    return `<button data-pair="${key}" class="pair-option ${s.pairs.includes(key) ? "selected" : ""}" aria-pressed="${s.pairs.includes(key)}"><strong>${a.label}—${b.label}</strong><span>原用时 <b>${value(stage.before[i][j])}</b></span><small>经${l.nodes[l.stage].label}：${value(stage.before[i][l.stage])} + ${value(stage.before[l.stage][j])}</small></button>`;
   })).join("")}</div>`;
 }
 function timeline(l, s) {

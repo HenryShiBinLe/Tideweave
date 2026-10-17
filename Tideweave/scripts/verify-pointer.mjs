@@ -1,3 +1,4 @@
+import {uiClick,selectMission} from './ui-navigation.mjs';
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -13,7 +14,7 @@ const page=await browser.newPage({viewport:{width:1440,height:940},reducedMotion
 const errors=[],external=[],results=[];
 page.on('pageerror',e=>errors.push(e.message));
 page.on('request',req=>{if(/^https?:/.test(req.url())&&!req.url().startsWith(url))external.push(req.url());});
-const click=selector=>page.locator(selector).first().click();
+const click=selector=>uiClick(page,selector);
 async function open(id){const l=levelById[id];await click(`[data-chapter="${l.chapter}"]`);await click(`[data-level="${id}"]`);}
 async function home(){await click('.tw-mission-head [data-action="home"]');}
 async function selected(){return page.locator('[data-edge][aria-pressed="true"]').evaluateAll(els=>els.map(el=>Number(el.dataset.edge)).sort((a,b)=>a-b));}

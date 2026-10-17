@@ -1,3 +1,4 @@
+import {uiClick,selectMission} from './ui-navigation.mjs';
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -11,7 +12,7 @@ const server=await serve(),url=`http://127.0.0.1:${server.address().port}`;
 const browser=await chromium.launch({channel:'msedge',headless:true});
 const page=await browser.newPage({viewport:{width:1280,height:720},reducedMotion:'reduce'});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
-const click=s=>page.locator(s).first().click();
+const click=s=>uiClick(page,s);
 const save=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('tideweave-progress')));
 const load=async p=>{await page.evaluate(p=>localStorage.setItem('tideweave-progress',JSON.stringify(p)),p);await page.reload();};
 const pass=(p,l)=>{const state=solution(l);recordAttempt(p,l,state,evaluate(l,state));};
@@ -31,12 +32,13 @@ try{
     // Old read markers must not suppress the newly requested transition briefing.
     p.briefings=ch.id===1?[1,2,3,4,5]:[];p.summaries=chapters.filter(c=>c.id<ch.id).map(c=>c.id);
     for(const l of levels.filter(l=>!l.optional&&l.chapter<=ch.id&&l.id!==last.id))pass(p,l);
-    p.records[last.id]={state:solution(last)};
+    p.records[last.id]={revision:last.revision??1,state:solution(last)};
     await load(p);
     const optionals=units.filter(u=>u.chapter===ch.id&&u.optional);
     for(const u of optionals){
+      await selectMission(page,`${u.id}.1`);
       const button=page.locator(`[data-level="${u.id}.1"]`);
-      assert.equal(await button.isDisabled(),true);assert.match(await button.innerText(),/完成本章普通关卡后开放/);
+      assert.equal(await button.isDisabled(),true);assert.match(await page.locator('.tw-lock-reason').innerText(),/完成本章全部普通关卡后开放/);
     }
     await click(`[data-level="${last.id}"]`);await check();
     assert.equal(await page.locator('dialog h2').innerText(),ch.title);
@@ -45,15 +47,15 @@ try{
       await page.screenshot({path:`verification/chapter-${ch.id}-completed.png`});
       await click('[data-action="chapter-optional"]');
       for(const u of optionals){
-        assert.equal(await page.locator(`[data-level="${u.id}.1"]`).isEnabled(),true);
-        assert.equal(await page.locator(`[data-level="${u.id}.2"]`).isDisabled(),true);
+        await selectMission(page,`${u.id}.1`);assert.equal(await page.locator(`[data-level="${u.id}.1"]`).isEnabled(),true);
+        await selectMission(page,`${u.id}.2`);assert.equal(await page.locator(`[data-level="${u.id}.2"]`).isDisabled(),true);
       }
-      const total=String(main(ch.id).length).padStart(2,'0');
-      assert.match(await page.locator('.tw-city-progress').innerText(),new RegExp(`${total}\\s*/\\s*${total}`));
+      const total=String(main(ch.id).length);
+      assert.match(await page.locator('.tw-campaign-completion').innerText(),new RegExp(`${total}\\s*/\\s*${total}`));
       await click('[data-action="chapter-note"]');
     }
     await click('[data-action="next-chapter"]');
-    if(!next){assert.equal(await page.locator('.tw-map').count(),1);assert.equal(await page.locator('dialog').count(),0);continue;}
+    if(!next){assert.equal(await page.locator('.tw-campaign').count(),1);assert.equal(await page.locator('dialog').count(),0);continue;}
     assert.equal(await page.locator('.tw-briefing-purpose strong').innerText(),chapters.find(c=>c.id===next.chapter).purpose);
     assert.equal(await page.locator('.tw-mission-ident').filter({hasText:next.id}).count(),0,'next level must wait for confirmation');
     assert.equal((await save()).last,last.id);
@@ -93,9 +95,9 @@ try{
     for(const l of levels.filter(l=>!l.optional&&l.chapter<=u.chapter))pass(p,l);
     const optional=levels.filter(l=>l.unit===u.id);
     for(const l of optional.slice(0,-1))pass(p,l);
-    p.records[optional.at(-1).id]={state:solution(optional.at(-1))};
+    p.records[optional.at(-1).id]={revision:optional.at(-1).revision??1,state:solution(optional.at(-1))};
     await load(p);await click(`[data-level="${optional.at(-1).id}"]`);await check();
-    assert.equal(await page.locator('.tw-map').count(),1);assert.equal(await page.locator('dialog').count(),0,'optional completion stays in its chapter');
+    assert.equal(await page.locator('.tw-campaign').count(),1);assert.equal(await page.locator('dialog').count(),0,'optional completion stays in its chapter');
     assert.equal((await save()).chapter,u.chapter);
   }
   assert.deepEqual(errors,[]);

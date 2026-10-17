@@ -267,6 +267,7 @@ function evaluate(l, s) {
     }
     case "color":
     case "solid": {
+      if(s.colors.length!==l.nodes.length||s.colors.some(c=>!Number.isInteger(c)||c< -1||c>5))return incomplete('颜色数据不完整，请重新上色。');
       if (l.tutorial && l.type === "solid") {
         r.pass = s.colors.some((c) => c >= 0) && s.netVisited;
         r.message = r.pass ? "同一个面的颜色已同步到展开图。" : "先给任意面上色，再打开一次展开图。";
@@ -276,10 +277,10 @@ function evaluate(l, s) {
       if (s.colors.includes(-1)) return incomplete("还有区域或面尚未上色。");
       r.edges = l.edges.map((e, i) => s.colors[e.a] === s.colors[e.b] ? i : -1).filter((i) => i >= 0);
       r.nodes = [...new Set(r.edges.flatMap((i) => [l.edges[i].a, l.edges[i].b]))];
-      r.pass = !r.edges.length;
       r.metric = new Set(s.colors).size;
+      r.pass = !r.edges.length && (!l.maxColors || r.metric <= l.maxColors);
       r.unit = "色";
-      r.message = r.pass ? "全部相邻区域已区分。" : `有 ${r.edges.length} 组相邻区域使用了相同颜色。`;
+      r.message = r.edges.length ? `有 ${r.edges.length} 组相邻区域使用了相同颜色。` : !r.pass ? `相邻关系已区分，但用了 ${r.metric} 色；本关最多 ${l.maxColors} 色。` : "全部相邻区域已区分。";
       break;
     }
     case "matching": {
