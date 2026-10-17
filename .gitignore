@@ -1,0 +1,102 @@
+# ===== 系统文件 =====
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+desktop.ini
+
+# ===== 编辑器 / IDE =====
+.vscode/
+.idea/
+.zed/
+.fleet/
+*.swp
+*.swo
+*~
+
+# ===== 密钥与本地环境配置（千万别提交）=====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+secrets/
+
+# ===== AI coding agent 配置（全部不提交）=====
+# Claude Code
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.mcp.json
+# Codex / 通用 agent 指令文件
+.codex/
+AGENTS.md
+AGENTS.override.md
+# Command Code
+.commandcode/
+# 其他常见 AI 编辑器 / agent
+.cursor/
+.cursorrules
+.windsurf/
+.windsurfrules
+.trae/
+.gemini/
+GEMINI.md
+.aider*
+.continue/
+.cline/
+.clinerules
+.roo/
+.kiro/
+
+# ===== 日志 / 临时文件 =====
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+# ===== Node.js =====
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# ===== 构建产物 =====
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+coverage/
+
+# ===== 本地数据库 =====
+*.sqlite
+*.sqlite3
+*.db
+
+
+docs-0/
+
+# ===== 运行时数据（存档 / 端口信息）=====
+/data/
+
+.obsidian/
