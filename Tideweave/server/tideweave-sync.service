@@ -1,0 +1,39 @@
+# Tideweave 云同步服务的 systemd 配置（部署步骤见 server/README.md）
+# 放到 /etc/systemd/system/tideweave-sync.service，然后：
+#   sudo systemctl daemon-reload && sudo systemctl enable --now tideweave-sync
+[Unit]
+Description=Tideweave 云同步服务
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tideweave
+Group=tideweave
+WorkingDirectory=/opt/tideweave
+ExecStart=/opt/node/bin/node server/index.mjs
+Environment=HOST=0.0.0.0
+Environment=PORT=8080
+Environment=DATA_DIR=/var/lib/tideweave-sync
+# 同时托管网页版时取消下一行的注释（要先和 @aliezXDD 确认）
+#Environment=STATIC_DIR=/opt/tideweave/dist
+Environment=MIN_FREE_MB=500
+# systemd 自动创建 /var/lib/tideweave-sync，并归 tideweave 用户所有
+StateDirectory=tideweave-sync
+Restart=on-failure
+RestartSec=3
+
+# 加固：服务只能写自己的数据目录，看不到家目录，不能提权
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# 想直接监听 80 端口时取消下一行的注释，并把 PORT 改成 80
+#AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
