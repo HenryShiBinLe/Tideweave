@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tideweave 同步测速</title>
+<style>
+  /* 测速页：部署时和网页版 dist/ 放在同一个目录，地址是 /speedtest.html；和同步接口同源，不涉及跨域 */
+  :root { --bg: #f1f3ef; --fg: #1f2421; --muted: #5f6b64; --card: #ffffff; --accent: #1f7a6d; --bad: #b5452f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #161a18; --fg: #e8ece9; --muted: #9aa7a0; --card: #212724; --accent: #4fb3a3; --bad: #e07a63; } }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 22px; margin: 4px 0; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .card { background: var(--card); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+  .value { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .value.bad { color: var(--bad); }
+  button, a.button { display: inline-block; font: inherit; padding: 10px 18px; margin: 4px 8px 4px 0; border: 0; border-radius: 10px; background: var(--accent); color: #fff; text-decoration: none; }
+  button:disabled { opacity: .5; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tideweave 同步测速</h1>
+  <p class="muted">测的是这台设备到同步服务器的真实速度。测之前请关掉代理（VPN），用手机流量；测完可以截图。</p>
+  <div class="card"><div>第一次打开游戏（下载约 0.5 MB）</div><div class="value" id="load">等待中…</div><div class="muted" id="load-detail"></div></div>
+  <div class="card"><div>同步一次（拉取 + 推送 27 KB 存档）</div><div class="value" id="sync">等待中…</div><div class="muted" id="sync-detail"></div></div>
+  <div class="card"><div>接口往返延迟</div><div class="value" id="rtt">等待中…</div><div class="muted" id="rtt-detail"></div></div>
+  <p class="muted" id="meta"></p>
+  <p><button id="again" type="button">再测一次</button><a class="button" href="./">打开游戏</a></p>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (t) => (t < 1000 ? `${Math.round(t)} 毫秒` : `${(t / 1000).toFixed(1)} 秒`);
+const median = (list) => [...list].sort((a, b) => a - b)[list.length >> 1];
+const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => ALPHABET[b & 31]).join("");
+async function timed(task) {
+  const start = performance.now();
+  const value = await task();
+  return [performance.now() - start, value];
+}
+
+// 1. 第一次打开游戏：并行下载首屏要加载的四个文件，不走缓存（只算下载，不含手机解析游戏代码的时间）
+async function testLoad() {
+  const token = Date.now();
+  const files = ["./index.html", "./style.css", "./app.js", "./assets/fonts/TideweaveSerif-Bold.woff2"];
+  const [time, sizes] = await timed(() => Promise.all(files.map(async (file) => {
+    const response = await fetch(`${file}?t=${token}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`${file} 返回 ${response.status}`);
+    return (await response.arrayBuffer()).byteLength;
+  })));
+  const wire = performance.getEntriesByType("resource").filter((e) => e.name.includes(`t=${token}`)).reduce((sum, e) => sum + (e.transferSize || 0), 0);
+  $("load").textContent = fmt(time);
+  $("load").classList.toggle("bad", time > 5000);
+  $("load-detail").textContent = wire
+    ? `实际传输 ${Math.round(wire / 1024)} KB，平均约 ${((wire * 8) / 1e6 / (time / 1000)).toFixed(1)} Mbps`
+    : `共 ${Math.round(sizes.reduce((a, b) => a + b, 0) / 1024)} KB（解压后）`;
+}
+
+// 2. 同步：新建一个测速专用的同步码，做 5 轮“拉取 + 推送”，信封里垫 27 KB，和全通关存档一样大
+async function testSync() {
+  const headers = { "X-Sync-Code": newCode(), "Content-Type": "application/json" };
+  const body = JSON.stringify({ format: 1, save: { version: 1, records: {} }, clock: { fields: {}, savedAt: Date.now() }, device: "speedtest", padding: "x".repeat(27 * 1024) });
+  const created = await fetch("./api/v1/save", { method: "PUT", headers: { ...headers, "If-None-Match": "*" }, body });
+  if (!created.ok) throw new Error(`新建返回 ${created.status}`);
+  let rev = (await created.json()).rev;
+  const rounds = [];
+  for (let i = 0; i < 5; i++) {
+    const [time] = await timed(async () => {
+      const pulled = await fetch("./api/v1/save", { headers, cache: "no-store" });
+      if (!pulled.ok) throw new Error(`拉取返回 ${pulled.status}`);
+      await pulled.arrayBuffer();
+      const pushed = await fetch("./api/v1/save", { method: "PUT", headers: { ...headers, "If-Match": `"${rev}"` }, body });
+      if (!pushed.ok) throw new Error(`推送返回 ${pushed.status}`);
+      rev = (await pushed.json()).rev;
+    });
+    rounds.push(time);
+    $("sync").textContent = `${fmt(median(rounds))}（${rounds.length}/5）`;
+  }
+  $("sync").textContent = fmt(median(rounds));
+  $("sync").classList.toggle("bad", median(rounds) > 3000);
+  $("sync-detail").textContent = `5 次的中位数；最快 ${fmt(Math.min(...rounds))}，最慢 ${fmt(Math.max(...rounds))}`;
+}
+
+// 3. 接口往返：5 次健康检查
+async function testRtt() {
+  const list = [];
+  for (let i = 0; i < 5; i++) {
+    const [time] = await timed(() => fetch(`./api/v1/health?t=${Math.random()}`, { cache: "no-store" }).then((r) => r.arrayBuffer()));
+    list.push(time);
+  }
+  $("rtt").textContent = fmt(median(list));
+  $("rtt-detail").textContent = `5 次的中位数；最快 ${fmt(Math.min(...list))}，最慢 ${fmt(Math.max(...list))}`;
+}
+
+async function run() {
+  $("again").disabled = true;
+  for (const id of ["load", "sync", "rtt"]) {
+    $(id).textContent = "测速中…";
+    $(id).classList.remove("bad");
+    $(`${id}-detail`).textContent = "";
+  }
+  $("meta").textContent = `测试时间：${new Date().toLocaleString("zh-CN")}　网络：${navigator.connection?.effectiveType ?? "未知"}　地址：${location.host}`;
+  for (const [id, test] of [["load", testLoad], ["sync", testSync], ["rtt", testRtt]]) {
+    try {
+      await test();
+    } catch (error) {
+      $(id).textContent = "失败";
+      $(id).classList.add("bad");
+      $(`${id}-detail`).textContent = String(error?.message || error);
+    }
+  }
+  $("again").disabled = false;
+}
+$("again").addEventListener("click", run);
+run();
+</script>
+</body>
+</html>

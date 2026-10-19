@@ -329,7 +329,16 @@ export function createSyncServer(options = {}) {
   }
 
   async function handle(req, res, ctx) {
-    const url = new URL(req.url, "http://localhost");
+    let url;
+    // 只接受以 / 开头的普通请求路径；“*”、完整网址等其他形式本服务用不到
+    if (!req.url.startsWith("/")) return sendJSON(req, res, 400, { error: "bad-path", message: "请求路径不对" });
+    try {
+      // 用字符串拼接而不是 new URL(req.url, base)：后者遇到“//.env”这种双斜杠开头的路径，
+      // 会把它当成“//主机名/路径”，路径就变成了“/”（10/19 线上扫描器真实发过这类请求）
+      url = new URL(`http://localhost${req.url}`);
+    } catch {
+      return sendJSON(req, res, 400, { error: "bad-path", message: "请求路径不对" });
+    }
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "no-referrer");
     const origin = req.headers.origin;

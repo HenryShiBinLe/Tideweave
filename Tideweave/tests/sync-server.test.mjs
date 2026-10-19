@@ -196,6 +196,10 @@ test('托管网页版：默认关闭；开启后支持首页、gzip、304，挡�
     assert.equal(js.headers['content-encoding'],'gzip');assert.equal(js.text,script);assert.match(js.headers['content-type'],/javascript/);
     assert.equal((await request(s.port,'GET','/app.js',{headers:{'If-Modified-Since':js.headers['last-modified']}})).status,304);
     for(const p of ['/../secret.txt','/..%2fsecret.txt','/%2e%2e/secret.txt','/..%5csecret.txt','/nope.js','/'+encodeURIComponent('\0')])assert.equal((await request(s.port,'GET',p)).status===200,false,p);
+    // 扫描器真实发过的请求：双斜杠开头的路径曾被当成“//主机名/路径”解析，结果对 //.env 返回了首页（10/19 线上日志发现）
+    for(const p of ['//.env','///.env'])assert.equal((await request(s.port,'GET',p)).status,404,p);
+    assert.equal((await request(s.port,'GET','//index.html')).status,200,'多余的斜杠按普通路径处理，和常见服务器一样');
+    assert.equal((await request(s.port,'GET','*')).status,400,'不以 / 开头的请求目标直接拒绝');
     assert.equal((await request(s.port,'PUT','/index.html',{body:'x'})).status,405);
   }finally{await s.stop();fs.rmSync(root,{recursive:true,force:true});}
 });
