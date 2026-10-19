@@ -144,7 +144,7 @@ function readBody(req, limit) {
  * @param {string} [options.dataDir] 数据目录，默认 server/data
  * @param {string|null} [options.staticDir] 顺带托管的网页目录（网页版 dist/），不设则不托管
  * @param {string[]} [options.corsOrigins] 允许跨域访问的来源，默认本机预览地址
- * @param {boolean} [options.trustProxy] 前面有反向代理时为 true，按 X-Forwarded-For 认客户端 IP
+ * @param {boolean} [options.trustProxy] 前面有 nginx、Caddy 这类转发服务时为 true，按 X-Forwarded-For 认客户端 IP
  * @param {number[]} [options.supportedVersions] 接受的存档版本，默认 [1]
  * @param {number} [options.minFreeBytes] 磁盘剩余低于这个值时拒绝新建同步码，默认 500 MB
  * @param {object} [options.limits] 限流参数：{ ip, write, create }，每项 { capacity, refillPerSecond }

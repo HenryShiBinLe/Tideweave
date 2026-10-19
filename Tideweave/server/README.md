@@ -22,7 +22,7 @@ node server/index.mjs
 | `DATA_DIR` | `server/data` | 数据目录 |
 | `STATIC_DIR` | 不设 | 顺带托管的网页目录（网页版 `dist/`），不设就不托管 |
 | `CORS_ORIGINS` | `http://localhost:*,http://127.0.0.1:*` | 允许跨域访问的来源，逗号分隔；`:*` 表示任意端口 |
-| `TRUST_PROXY` | `0` | 前面有反向代理时设为 `1`，按 `X-Forwarded-For` 认客户端 IP |
+| `TRUST_PROXY` | `0` | 前面有 nginx、Caddy 这类转发服务时设为 `1`，按 `X-Forwarded-For` 认客户端 IP |
 | `MIN_FREE_MB` | `500` | 磁盘剩余低于这个值时拒绝新建同步码 |
 
 ## 部署到国内服务器
@@ -59,7 +59,7 @@ sudo systemctl daemon-reload && sudo systemctl enable --now tideweave-sync
 curl -s http://127.0.0.1:8080/api/v1/health
 ```
 
-服务器开了 ufw 防火墙的话再执行 `sudo ufw allow 8080/tcp`。最后用手机流量（关掉代理）访问 `http://服务器IP:8080/api/v1/health`，看到 `{"ok":true}` 就通了。
+服务器开了 ufw 防火墙的话再执行 `sudo ufw allow 8080/tcp`。最后用手机流量访问 `http://服务器IP:8080/api/v1/health`，看到 `{"ok":true}` 就通了。
 
 **更新代码**：重复第 3 步，然后 `sudo systemctl restart tideweave-sync`。
 
@@ -108,7 +108,7 @@ LOG_DIR=$HOME/tideweave/logs
 
 ## 测速页
 
-`server/speedtest.html` 部署在网页目录里，地址是 `http://服务器IP:8080/speedtest.html`。在手机上打开（关掉代理、用手机流量），会测三项：第一次打开游戏要多久（并行下载首屏的四个文件）、同步一次要多久（5 轮“拉取 + 推送 27 KB 存档”）、接口往返延迟。用来判断这台服务器的网络够不够用。
+`server/speedtest.html` 部署在网页目录里，地址是 `http://服务器IP:8080/speedtest.html`。用手机流量打开，会测三项：第一次打开游戏要多久（并行下载首屏的四个文件）、同步一次要多久（5 轮“拉取 + 推送 27 KB 存档”）、接口往返延迟。用来判断这台服务器的网络够不够用。
 
 ## 运维
 
