@@ -105,6 +105,8 @@ function addVary(res, value) {
   res.setHeader("Vary", [...values].join(", "));
 }
 
+// 带 8 位内容哈希的素材，如 /assets/nodes/node_well.15b7045d.webp
+const HASHED_ASSET = /^\/assets\/.+\.[0-9a-f]{8}\.(webp|png)$/;
 const acceptsGzip = (req) => /\bgzip\b/.test(req.headers["accept-encoding"] ?? "");
 
 // 读取请求体。超过上限时不能马上回 413 并断开：客户端还在上传，连接一断它只会看到写入失败（EPIPE），
@@ -305,8 +307,10 @@ export function createSyncServer(options = {}) {
     if (!stat?.isFile()) return sendJSON(req, res, 404, { error: "not-found", message: "文件不存在" });
     const ext = path.extname(file).toLowerCase();
     const modified = Math.floor(stat.mtimeMs / 1000) * 1000;
-    // 文件名不带哈希（app.js、style.css），所以每次都要向服务器确认有没有更新，避免部署后浏览器还用旧文件
-    const headers = { "Content-Type": MIME[ext] ?? "application/octet-stream", "Last-Modified": new Date(modified).toUTCString(), "Cache-Control": "no-cache" };
+    // 文件名带内容哈希的素材（部署时处理过的图片），内容一变名字就变，可以让浏览器缓存一年、不再回来确认；
+    // 其他文件名不带哈希（index.html、app.js、style.css、字体），每次都要向服务器确认有没有更新，避免部署后浏览器还用旧文件
+    const immutable = HASHED_ASSET.test(pathname);
+    const headers = { "Content-Type": MIME[ext] ?? "application/octet-stream", "Last-Modified": new Date(modified).toUTCString(), "Cache-Control": immutable ? "public, max-age=31536000, immutable" : "no-cache" };
     const since = Date.parse(req.headers["if-modified-since"] ?? "");
     if (Number.isFinite(since) && modified <= since) {
       res.writeHead(304, headers);

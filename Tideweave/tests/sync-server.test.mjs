@@ -204,6 +204,22 @@ test('托管网页版：默认关闭；开启后支持首页、gzip、304，挡�
   }finally{await s.stop();fs.rmSync(root,{recursive:true,force:true});}
 });
 
+test('托管网页版：文件名带内容哈希的素材让浏览器长期缓存，其他文件每次确认',async()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'tw-static-')),site=path.join(root,'dist');
+  fs.mkdirSync(path.join(site,'assets','nodes'),{recursive:true});fs.mkdirSync(path.join(site,'assets','fonts'));
+  fs.writeFileSync(path.join(site,'index.html'),'<!doctype html>');fs.writeFileSync(path.join(site,'app.js'),'1');
+  fs.writeFileSync(path.join(site,'assets','nodes','node_well.15b7045d.webp'),'RIFF');
+  fs.writeFileSync(path.join(site,'assets','nodes','node_well.png'),'png');
+  fs.writeFileSync(path.join(site,'assets','fonts','TideweaveSerif-Bold.woff2'),'font');
+  const s=await start({staticDir:site});
+  try{
+    const hashed=await request(s.port,'GET','/assets/nodes/node_well.15b7045d.webp');
+    assert.equal(hashed.status,200);assert.equal(hashed.headers['cache-control'],'public, max-age=31536000, immutable');
+    // 不带哈希的文件内容可能随部署变化，必须每次向服务器确认
+    for(const p of ['/','/index.html','/app.js','/assets/nodes/node_well.png','/assets/fonts/TideweaveSerif-Bold.woff2'])assert.equal((await request(s.port,'GET',p)).headers['cache-control'],'no-cache',p);
+  }finally{await s.stop();fs.rmSync(root,{recursive:true,force:true});}
+});
+
 test('磁盘快满时不再新建同步码，但已有同步码照常更新',async()=>{
   const normal=await start();
   try{await create(normal.port,CODE);}finally{await normal.stop(true);}
