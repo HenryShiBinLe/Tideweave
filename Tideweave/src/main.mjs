@@ -11,10 +11,13 @@ import { drawCity } from "./city.mjs";
 import { captureUI, animateUI, syncMotion, dismissDialog, renderUI } from './ui-motion.mjs';
 import {pathCost,criticalSchedule,floydStages,groups} from './algorithms.mjs';
 import {assetManifest,chapterSceneKeys} from './assets.mjs';
+import { syncAvailable, createSync } from './sync/index.mjs';
 const availableAssets=typeof __ASSET_FILES__==='undefined'?[]:__ASSET_FILES__;
 const loadedAssets=Object.fromEntries(availableAssets.map(id=>[id,assetManifest[id].path]));
 const app = document.querySelector("#app");
 const sessionCache=new Map();
+// 云同步：网页版读档、存档都经过同步层（见 docs/协作约定-存档与云同步.md 第六部分）；桌面版不创建，保持离线
+const sync=syncAvailable()?createSync():null;
 const st = { screen: "home", chapter: 1, levelId: null, progress: fresh(), session: null, modal: null, player: null, timer: null, solid: null, net: false, tool: 0, target: 0, fault: "mark", probe: null, adjacency: false, speed: 1, saveMeta: {}, campaignTab:'main', selectedMission:null };
 const icon = (name, size = 16) => createElement(icons[name] || icons.Circle, { width: size, height: size, "aria-hidden": "true" }).outerHTML;
 const esc = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -48,6 +51,7 @@ function save() {
   saveQueue = saveQueue.then(async () => {
     try {
       if (window.tideweave) await window.tideweave.save(data);
+      else if (sync) sync.save(data); // 照旧先写本机 localStorage，再由同步层在后台推送
       else localStorage.setItem("tideweave-progress", JSON.stringify(data));
       st.saveFailed=false;
     } catch (e) {
@@ -96,7 +100,7 @@ function home() {
       <button class="tw-menu-panel" data-action="campaign"><small>CHAPTERS / 0${chapters.length}</small><strong>章节选择</strong><span>${chapters.filter(c=>chapterDone(c.id)).length} / ${chapters.length} 章完成</span><span class="tw-menu-symbol">${icon('Route',64)}</span>${icon('ArrowUpRight',18)}</button>
       <button class="tw-menu-panel tw-menu-records" data-action="journal"><small>RECORDS</small><strong>通关回放</strong><span>${levels.filter(x=>st.progress.records[x.id]?.perfect).length} 枚徽记</span><span class="tw-menu-symbol">${icon('Layers3',64)}</span>${icon('ArrowUpRight',18)}</button>
       <div class="tw-home-options">${btn('settings','设置','Settings')}${window.tideweave?btn('quit','退出','LogOut'):btn('fullscreen','全屏','Maximize')}</div>
-    </nav><footer class="tw-home-status"><span>澜州联运区 / 恢复进度 <b>${done} / ${total}</b></span><progress value="${done}" max="${total}" aria-label="主线完成进度"></progress><span>本地存档 · 自动保存</span></footer></main>`;
+    </nav><footer class="tw-home-status"><span>澜州联运区 / 恢复进度 <b>${done} / ${total}</b></span><progress value="${done}" max="${total}" aria-label="主线完成进度"></progress><span data-sync-footer>${esc(syncFooter())}</span></footer></main>`;
 }
 function map() {
   const ch=chapters.find(x=>x.id===st.chapter),ls=levels.filter(x=>x.chapter===st.chapter),main=ls.filter(x=>!x.optional);
@@ -208,7 +212,7 @@ function dialog() {
   if (st.modal === "rules") body = `<span class="tw-eyebrow">${esc(typeLabel(x))} / ${x.id}</span><h2>本关规则</h2><h3>怎样算通关</h3><p>${esc(x.goal)}。</p><h3>怎样操作</h3><p>${esc(x.controls)}</p><h3>还需要知道</h3><ul>${x.rules.map(rule=>`<li>${esc(rule)}</li>`).join('')}</ul>${x.badge ? `<p class="tw-insight">额外挑战：${esc(x.badge)}。这是徽记条件，不是普通通关条件。</p>` : ""}${btn("close", "返回关卡", "ArrowLeft", "primary")}`;
   if (st.modal === "hint") body = `<span class="tw-eyebrow">策略提示 / 自选</span><h2>再看一眼关系</h2><ol>${x.hints.slice(0, st.hintDepth ?? 1).map((h) => `<li>${esc(h)}</li>`).join("")}</ol><div>${(st.hintDepth ?? 1) < 3 ? btn("deeper", "再提示一点", "Lightbulb") : ""}${btn("close", "继续尝试", "ArrowLeft", "primary")}</div>`;
   if (st.modal === "result") body = `<span class="tw-eyebrow">${result.pass ? "运行通过" : "待调整"} / ${x.id}</span><h2>${result.pass ? result.perfect ? "联运有序" : "设施恢复" : "还需调整"}</h2><p>${esc(result.message)}</p>${result.pass && levels.filter(q=>q.unit===x.unit).at(-1).id===x.id ? `<p class="tw-insight">${esc(x.insight)}</p>` : ""}<div class="tw-result"><b>${result.metric}</b><span>${esc(result.unit)}</span>${result.perfect ? icon("Award", 22) : ""}</div><div>${btn("close", result.pass ? "继续优化" : "返回调整", "ArrowLeft")}${result.pass ? btn("continue", "继续", "ArrowRight", "primary") : ""}</div>`;
-  if (st.modal === "settings") body = `<span class="tw-eyebrow">本地设置</span><h2>游戏设置</h2><label>音效 <input data-setting="sound" type="checkbox" ${st.progress.settings.sound ? "checked" : ""}/></label><label>音量 <input data-setting="volume" type="range" min="0" max="1" step=".05" value="${st.progress.settings.volume}"/></label><label>减少动态效果 <input data-setting="motion" type="checkbox" ${st.progress.settings.motion ? "" : "checked"}/></label><p class="tw-small">${window.tideweave ? st.saveMeta.portable?'便携存档：data/progress.json':'存档：系统用户目录，迁移前请导出。' : "预览进度保存在浏览器本地。"}</p><div class="tw-save-actions">${btn("export", "导出存档", "Download")}${btn("import", "导入存档", "Upload")}</div><footer class="tw-settings-footer"><div>${ib('fullscreen','全屏','Maximize')}${window.tideweave?ib('quit','退出游戏','LogOut'):''}</div>${btn("close", "完成", "Check", "primary")}</footer>`;
+  if (st.modal === "settings") body = `<span class="tw-eyebrow">本地设置</span><h2>游戏设置</h2><label>音效 <input data-setting="sound" type="checkbox" ${st.progress.settings.sound ? "checked" : ""}/></label><label>音量 <input data-setting="volume" type="range" min="0" max="1" step=".05" value="${st.progress.settings.volume}"/></label><label>减少动态效果 <input data-setting="motion" type="checkbox" ${st.progress.settings.motion ? "" : "checked"}/></label><p class="tw-small">${window.tideweave ? st.saveMeta.portable?'便携存档：data/progress.json':'存档：系统用户目录，迁移前请导出。' : "进度保存在浏览器本地。"}</p>${sync?syncPanel():''}<div class="tw-save-actions">${btn("export", "导出存档", "Download")}${btn("import", "导入存档", "Upload")}</div><footer class="tw-settings-footer"><div>${ib('fullscreen','全屏','Maximize')}${window.tideweave?ib('quit','退出游戏','LogOut'):''}</div>${btn("close", "完成", "Check", "primary")}</footer>`;
   if (st.modal === "journal") body = `<span class="tw-eyebrow">EX / 筹算·回放</span><h2>已完成的调度</h2><div class="tw-journal">${levels.filter((q) => passed(q.id) && !q.tutorial).map((q) => `<button data-replay-id="${q.id}"><b>${q.id}</b><span>${esc(q.title)}</span>${icon("Play")}</button>`).join("") || "<p>完成任务后，这里会保存过程回放。</p>"}</div>`;
   if(st.modal==='briefing'){
     const ch=chapters.find(c=>c.id===st.briefingChapter)??chapters.find(c=>c.id===st.chapter);
@@ -219,7 +223,8 @@ function dialog() {
     body=`<span class="tw-eyebrow">CH.${String(ch.id).padStart(2,'0')} / ${ch.scene}</span><h2>${ch.title}</h2><p>${esc(ch.summary)}</p>${units.some(u=>u.chapter===ch.id&&u.optional)?'<p class="tw-insight">本章选修已解锁，可先挑战，也可直接进入下一章。</p>':''}<div>${units.some(u=>u.chapter===ch.id&&u.optional)?btn('chapter-optional','挑战本章选修','Map'):''}${l()?btn('own-replay','回看本次选择','Play'):''}${btn('next-chapter',st.pendingNext?'前往下一章':'返回地图','ArrowRight','primary')}</div>`;
   }
   if(st.modal==='reset')body=`<h2>重置当前方案？</h2><p>进度、徽记和提示入口保留，重置后仍可撤销。</p><div>${btn('close','保留方案')}${btn('confirm-reset','重置','RotateCcw','primary')}</div>`;
-  if(st.modal==='import')body=`<h2>导入存档？</h2><p>导入将替换本机进度。建议先导出一份备份。</p><div>${btn('export','先导出','Download')}${btn('confirm-import','选择存档','Upload','primary')}</div>`;
+  if(st.modal==='import')body=`<h2>导入存档？</h2><p>导入将替换本机进度。建议先导出一份备份。</p>${sync?.status().code?'<p>已开启云同步：导入的进度会和云端合并，不会删掉云端已有的进度。</p>':''}<div>${btn('export','先导出','Download')}${btn('confirm-import','选择存档','Upload','primary')}</div>`;
+  if(st.modal==='sync-off')body=`<h2>关闭云同步？</h2><p>本机进度会保留，云端那份也不会删除。以后在任何设备输入同步码 <b>${esc(sync?.status().code??'')}</b> 还能接上，请先记下它。</p><div>${btn('settings','返回','ArrowLeft')}${btn('confirm-sync-off','关闭云同步','CloudOff','primary')}</div>`;
   if(st.modal==='adjacent'){
     const id=st.face??0,ns=l().edges.filter(e=>e.a===id||e.b===id).map(e=>solids[l().solid].labels[e.a===id?e.b:e.a]);
     body=`<h2>${solids[l().solid].labels[id]}面</h2><p>共用边的面：${ns.join('、')}。</p>${btn('close','返回','ArrowLeft','primary')}`;
@@ -413,6 +418,52 @@ async function importSave() {
     toast("导入失败，当前进度未改动。");
   }
 }
+// —— 云同步（只在网页版用到）——
+const syncShort={off:'本地存档 · 自动保存',idle:'云同步 · 等待同步',syncing:'云同步 · 同步中',ok:'云同步 · 已同步',offline:'云同步 · 离线，稍后重试',error:'云同步 · 出错，稍后重试',paused:'云同步 · 已暂停'};
+function syncFooter(s=sync?.status()){
+  if(!s)return '本地存档 · 自动保存';
+  return s.state==='ok'&&s.dirty?'云同步 · 有改动待上传':syncShort[s.state]??syncShort.off;
+}
+function syncText(s=sync.status()){
+  const parts=[s.message];
+  if(s.lastSyncAt)parts.push(`上次同步 ${new Date(s.lastSyncAt).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}`);
+  if(s.state==='ok'&&s.dirty)parts.push('有改动待上传');
+  if(s.pendingApply)parts.push('其他设备的新进度会在退出关卡后载入');
+  return parts.join(' · ');
+}
+// 设置里的云同步区：没开启时给“开启”和“输入同步码”，开启后显示同步码和状态
+function syncPanel(){
+  const s=sync.status();
+  if(s.state==='off')return `<section class="tw-sync"><h3>云同步</h3><p>开启后会得到一个同步码；在其他浏览器或设备上输入它，就能接着玩。设置不跟着同步。</p><div class="tw-sync-row">${btn('sync-enable','开启云同步','Cloud','primary')}</div><div class="tw-sync-row"><input class="tw-sync-input" data-sync-code type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" placeholder="已有同步码：XXXX-XXXX-XXXX" aria-label="输入同步码"/>${btn('sync-join','接上','LogIn')}</div></section>`;
+  return `<section class="tw-sync"><h3>云同步</h3><div class="tw-sync-code"><small>同步码</small><b>${esc(s.code)}</b>${ib('sync-copy','复制同步码','Copy')}</div><p class="tw-sync-status" data-sync-status data-state="${s.state}">${esc(syncText(s))}</p><div class="tw-sync-row">${btn('sync-now','立即同步','RefreshCw')}${btn('sync-disable','关闭云同步','CloudOff')}</div></section>`;
+}
+// 复制同步码：http 部署时没有 navigator.clipboard，退回到 execCommand
+function copyText(text){
+  const done=()=>toast(`已复制同步码 ${text}`);
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(done,()=>fallback());return;}
+  fallback();
+  function fallback(){
+    const t=document.createElement('textarea');t.value=text;t.setAttribute('readonly','');t.style.cssText='position:fixed;opacity:0';
+    (app.querySelector('dialog')??document.body).append(t);t.select();
+    let ok=false;try{ok=document.execCommand('copy');}catch{}
+    t.remove();ok?done():toast(`请手动记下同步码：${text}`);
+  }
+}
+// 只在玩家不在关卡里时应用（关卡会话持有旧存档对象的引用）；设置弹窗开着时可以应用，其他弹窗等关掉再说
+function canApplyCloud(){
+  return st.screen!=='game'&&!st.player&&(!st.modal||st.modal==='settings');
+}
+// 应用云端进度：沿用 importSave() 的处理——停止播放、清空会话缓存、替换存档、保存、重画
+function applyCloud(progress){
+  stop();sessionCache.clear();
+  st.progress=normalize(progress); // 同步层给的已经 normalize 过，这里再整理一次（幂等）作为兜底
+  st.session=null;st.levelId=null;
+  if(st.screen==='home')st.chapter=st.progress.chapter;
+  if(st.selectedMission&&!unlock(st.selectedMission))st.selectedMission=null;
+  save();
+  render();
+  toast('已载入其他设备上的进度。');
+}
 async function action(name) {
   if(st.modal&&['close','continue','next-chapter','ack-briefing','chapter-optional','own-replay','confirm-reset'].includes(name)){
     if(!await dismissDialog(app.querySelector('dialog'),reduced()))return;
@@ -485,6 +536,39 @@ async function action(name) {
   if (name === "quit") {
     await save();
     if(!st.saveFailed)window.tideweave?.quit();
+    return;
+  }
+  if (name === "sync-enable") {
+    await sync.enable();
+    render();
+    toast("已开启云同步。在其他设备输入同步码即可接着玩。");
+    return;
+  }
+  if (name === "sync-join") {
+    const input = app.querySelector("[data-sync-code]");
+    const result = await sync.join(input?.value ?? "");
+    if (result.ok) { render(); toast("已接上同步码，两边的进度已合并。"); }
+    else { toast(result.message); input?.focus(); }
+    return;
+  }
+  if (name === "sync-now") {
+    await sync.syncNow();
+    return;
+  }
+  if (name === "sync-copy") {
+    copyText(sync.status().code ?? "");
+    return;
+  }
+  if (name === "sync-disable") {
+    st.modal = "sync-off";
+    render();
+    return;
+  }
+  if (name === "confirm-sync-off") {
+    sync.disable();
+    st.modal = "settings";
+    render();
+    toast("已关闭云同步，本机进度保留。");
     return;
   }
   if (name === "export") {
@@ -653,7 +737,7 @@ app.addEventListener('keydown',e=>{
   if(/^[1-6]$/.test(e.key)&&['color','solid','groups','scc'].includes(l().type)){st.tool=Number(e.key)-1;render();}
 });
 try {
-  const loaded = window.tideweave ? await window.tideweave.load() : { data: JSON.parse(localStorage.getItem("tideweave-progress") || "null") };
+  const loaded = window.tideweave ? await window.tideweave.load() : sync ? sync.load() : { data: JSON.parse(localStorage.getItem("tideweave-progress") || "null") };
   st.saveMeta = loaded;
   st.progress = normalize(loaded?.data);
   st.chapter = st.progress.chapter;
@@ -662,4 +746,12 @@ try {
 }
 render();
 if(st.saveMeta.warning)toast(st.saveMeta.warning);
+if(sync){
+  // 同步状态变化时只更新文字，不整页重画（免得打断弹窗和动效）
+  sync.subscribe(s=>{
+    const el=app.querySelector('[data-sync-status]');if(el){el.textContent=syncText(s);el.dataset.state=s.state;}
+    const f=app.querySelector('[data-sync-footer]');if(f)f.textContent=syncFooter(s);
+  });
+  sync.start({progress:st.progress,apply:applyCloud,canApply:canApplyCloud});
+}
 window.tideweave?.onClosing(async()=>{await save();window.tideweave.confirmClose(!st.saveFailed);});

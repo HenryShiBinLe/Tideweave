@@ -7,8 +7,9 @@ import { createSyncController } from "./controller.mjs";
 export { formatCode, parseCode } from "./code.mjs";
 export { PROGRESS_KEY, META_KEY, BACKUP_KEY } from "./controller.mjs";
 
-// 本机开发时可以在 localStorage 里写这个键，指定同步服务地址（例如 http://31.58.87.41:8080）；
-// 正式部署时网页版和同步服务同源，不需要设置
+// 在 localStorage 里写这个键可以指定同步服务地址；正式部署时网页版和同步服务同源，不需要设置。
+// 注意：index.html 的 CSP 只允许连同源（connect-src 'self'），填别的地址会被浏览器拦下。
+// 本机开发请让同步服务同时托管网页：npm run build 后 STATIC_DIR=dist node server/index.mjs
 export const SERVER_OVERRIDE_KEY = "tideweave-sync-server";
 
 function serverAddress() {

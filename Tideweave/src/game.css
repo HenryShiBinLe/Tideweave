@@ -1015,3 +1015,17 @@ input[type=range]:hover::-webkit-slider-thumb{filter:brightness(1.15)}
   .tw-route-toolbar .tw-btn{padding-inline:8px;gap:6px;white-space:nowrap}
   .tw-route-toolbar .tw-control-detail{display:none}
 }
+
+/* 云同步（设置弹窗里，只在网页版出现） */
+.tw-sync{margin-top:18px;padding:16px 0 4px;border-top:1px solid var(--line)}
+.tw-sync h3{margin-top:0}
+.tw-sync-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.tw-sync-row .tw-btn{flex:1}
+.tw-sync-input{flex:2;min-width:0;padding:10px 12px;font:14px var(--mono);letter-spacing:.06em;text-transform:uppercase;border:1px solid #a5b4b9;border-radius:4px;background:#fff;color:var(--ink)}
+.tw-sync-input::placeholder{letter-spacing:0;text-transform:none;color:#8a979b}
+.tw-sync-code{display:flex;align-items:center;gap:14px;padding:12px 14px;background:#eef3f0;border-left:3px solid var(--water)}
+.tw-sync-code small{font:11px var(--mono);color:var(--water)}
+.tw-sync-code b{flex:1;font:700 20px var(--mono);letter-spacing:.08em;color:var(--graphite);overflow-wrap:anywhere}
+.tw-dialog .tw-sync-status{font-size:13px;margin:10px 0 0}
+.tw-sync-status[data-state=offline],.tw-sync-status[data-state=error],.tw-sync-status[data-state=paused]{color:var(--red)}
+@media (max-width:560px){.tw-sync-row{flex-direction:column}.tw-sync-input{flex:auto}}
