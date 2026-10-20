@@ -18,6 +18,16 @@
 
 2026-10-17 玩法修订保留 49 个关卡 ID，替换了重复地图并强化中后期规划。旧版已通关与徽记会保留，改变题目的编辑方案会重置；选关页标明“旧版已通关”，完成新版后记录新版方案。旧成绩不会被当成新题答案，回放会说明当前展示的是新版参考方案。详见 `GAMEPLAY_CHANGES.md`。
 
+## Mac 原生版（Swift + WKWebView）
+
+`mac/` 是 Mac 专用的原生外壳：AppKit 窗口和菜单 + 系统自带的 WKWebView，加载同一份 `dist/` 前端，不打包 Chromium（App 约 50 MB）。它向页面提供与 Electron 版相同的 `window.tideweave` 接口，所以前端无需区分两种壳，同样不启用云同步、拦截所有联网请求。
+
+- 构建：在本目录运行 `npm run package:mac`（只需 Xcode 命令行工具，不需要完整 Xcode），产物为 `release/mac/Tideweave.app`；`npm run start:mac` 构建后直接打开。已有最新 `dist/` 时可用 `SKIP_WEB_BUILD=1 bash mac/build.sh` 跳过前端编译。
+- 存档：`~/Library/Application Support/Tideweave/progress.json`（含 `.bak` 备份），不写进 App 包，重新构建不会丢档。
+- 习惯：⌘Q / ⌘W 退出前先存档；⌘Z 撤销、⌃⌘F 全屏；标题栏与游戏底色一致。
+- 签名：仅 ad-hoc 签名、未公证，适合自用；拷到别的 Mac 首次打开需右键“打开”。
+- 调试：`defaults write local.tideweave.mac WebInspector -bool true` 后可用 Safari 网页检查器。
+
 ## 玩法
 
 - 章节目标在章末转场时展示：完成本章最后一个普通关后，先看本章总结，选择“前往下一章”才显示下一章目标，确认后进入关卡。浏览章节标签、直接进关或重玩都不弹出目标。
@@ -71,6 +81,7 @@ node scripts/verify-interface.mjs
 - `src/solid-nets.mjs`：按真实棱生成不重叠的多面体展开图。
 - `src/session.mjs`、`progress.mjs`：历史栈、进度与提示。
 - `desktop/`：安全桌面壳、原子存档、导入导出。
+- `mac/`：Mac 原生壳（Swift / AppKit / WKWebView）与构建脚本，接口与 `desktop/` 一致。
 - `tests/`、`scripts/verify-ui.mjs`：规则及逐关 UI 验证。
 - `assets/`：替换素材目录；详见 `ASSETS_NEEDED.md`。
 

@@ -734,7 +734,7 @@ function bind() {
 }
 app.addEventListener('keydown',e=>{
   if(st.modal||st.screen!=='game'||e.target.matches('input,select'))return;
-  if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();action(e.shiftKey?'redo':'undo');}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();action(e.shiftKey?'redo':'undo');}
   if(/^[1-6]$/.test(e.key)&&['color','solid','groups','scc'].includes(l().type)){st.tool=Number(e.key)-1;render();}
 });
 try {
