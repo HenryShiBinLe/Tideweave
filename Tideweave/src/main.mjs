@@ -265,7 +265,7 @@ function render() {
   if(st.player){const bar=app.querySelector('.tw-playback');bar.insertAdjacentHTML('beforeend',`<select class="tw-speed" aria-label="回放速度">${[.5,1,2,3].map(v=>`<option value="${v}" ${st.progress.settings.speed===v?'selected':''}>${v}×</option>`).join('')}</select>`);bar.querySelector('select').onchange=e=>{st.progress.settings.speed=Number(e.target.value);save();step();};}
   if(st.modal==='settings'){
     const el=app.querySelector('dialog');
-    if(st.saveMeta.portable===false)el.insertAdjacentHTML('beforeend',`<p class="tw-small">当前目录只读，实际存档位于 ${esc(st.saveMeta.savePath)}。迁移前请导出。</p>`);
+    if(st.saveMeta.portable===false)el.insertAdjacentHTML('beforeend',`<p class="tw-small">${st.saveMeta.platform==='mac'?'':'当前目录只读，'}实际存档位于 ${esc(st.saveMeta.savePath)}。迁移前请导出。</p>`);
   }
   const d=app.querySelector('dialog');if(d){d.showModal();d.addEventListener('cancel',e=>{e.preventDefault();action('close');});}
   else if(focused)app.querySelector(`[data-${focused[0]}="${CSS.escape(focused[1])}"]`)?.focus({preventScroll:true});

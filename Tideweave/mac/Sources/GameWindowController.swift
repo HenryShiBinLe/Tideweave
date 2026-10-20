@@ -35,6 +35,35 @@ final class GameWindowController: NSObject, NSWindowDelegate, WKNavigationDelega
         onClosing: callback => { closing = callback; call('closingReady'); },
         confirmClose: ok => call('confirmClose', ok === true)
       })});
+      // 标题栏取色：读出页面最顶端一像素处实际看到的颜色（逐层叠加半透明背景，例如弹窗遮罩），
+      // 交给原生侧把标题栏染成同色，让系统标题栏和页面顶栏连成一体
+      const parse = s => { const m = s && s.match(/[\\d.]+/g); return m ? m.map(Number) : null; };
+      let lastTop = '', queued = false;
+      const reportTop = () => {
+        queued = false;
+        if (!document.body) return;
+        let r = 0, g = 0, b = 0, remain = 1;
+        for (const el of document.elementsFromPoint(4, 1)) {
+          const c = parse(getComputedStyle(el).backgroundColor);
+          if (!c || c.length < 3) continue;
+          const a = c.length > 3 ? c[3] : 1;
+          if (a <= 0) continue;
+          r += c[0] * a * remain; g += c[1] * a * remain; b += c[2] * a * remain; remain *= 1 - a;
+          if (remain < 0.01) break;
+        }
+        // 一路透明到底时，按页面底色补齐
+        const base = parse(getComputedStyle(document.body).backgroundColor) || [241, 243, 239];
+        if (base.length > 3 && base[3] === 0) base.splice(0, 3, 241, 243, 239);
+        r += base[0] * remain; g += base[1] * remain; b += base[2] * remain;
+        const top = [r, g, b].map(Math.round).join(',');
+        if (top !== lastTop) { lastTop = top; port.postMessage({op: 'topColor', payload: JSON.stringify(top)}); }
+      };
+      const queueTop = () => { if (!queued) { queued = true; requestAnimationFrame(reportTop); } };
+      document.addEventListener('DOMContentLoaded', () => {
+        new MutationObserver(queueTop).observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style']});
+        addEventListener('resize', queueTop);
+        queueTop();
+      });
       // 去掉 WebKit 默认的「重新载入」右键菜单，输入框里保留以便复制粘贴
       document.addEventListener('contextmenu', e => {
         if (!e.target.closest?.('input,textarea,[contenteditable]')) e.preventDefault();
@@ -54,10 +83,12 @@ final class GameWindowController: NSObject, NSWindowDelegate, WKNavigationDelega
 
         window.title = "脉序 · Tideweave"
         window.contentMinSize = NSSize(width: 720, height: 620)
-        // 标题栏与游戏底色融为一体；游戏是浅色设计，固定浅色外观避免深色模式下标题栏发黑
+        // 标题栏透明后显示的是窗口底色；运行时由页面上报顶部颜色（见 applyTopColor），
+        // 标题文字隐藏——游戏顶栏自带品牌名，窗口名仍出现在「窗口」菜单和调度中心里
         window.titlebarAppearsTransparent = true
-        window.appearance = NSAppearance(named: .aqua)
-        window.backgroundColor = NSColor(srgbRed: 0xf1 / 255, green: 0xf3 / 255, blue: 0xef / 255, alpha: 1)
+        window.titleVisibility = .hidden
+        window.titlebarSeparatorStyle = .none
+        applyTopColor(red: 0xf1, green: 0xf3, blue: 0xef)
         window.collectionBehavior.insert(.fullScreenPrimary)
         window.isReleasedWhenClosed = false
         window.delegate = self
@@ -100,6 +131,15 @@ final class GameWindowController: NSObject, NSWindowDelegate, WKNavigationDelega
     private func show() {
         guard !window.isVisible else { return }
         window.makeKeyAndOrderFront(nil)
+    }
+
+    /// 把标题栏染成页面顶部的颜色；深色时切到深色外观，红绿灯和菜单弹层随之变成深色样式
+    private func applyTopColor(red: Double, green: Double, blue: Double) {
+        let color = NSColor(srgbRed: red / 255, green: green / 255, blue: blue / 255, alpha: 1)
+        window.backgroundColor = color
+        webView?.underPageBackgroundColor = color
+        let luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255
+        window.appearance = NSAppearance(named: luminance < 0.5 ? .darkAqua : .aqua)
     }
 
     // MARK: 关窗与退出
@@ -164,7 +204,7 @@ final class GameWindowController: NSObject, NSWindowDelegate, WKNavigationDelega
             case "load":
                 let result = store.load()
                 replyHandler(try json(["data": result.data.map { $0 as Any } ?? NSNull(), "warning": result.warning,
-                                       "portable": false, "savePath": store.file.path]), nil)
+                                       "portable": false, "platform": "mac", "savePath": store.file.path]), nil)
             case "save":
                 try store.save(payload ?? Data())
                 replyHandler(#"{"ok":true}"#, nil)
@@ -179,6 +219,12 @@ final class GameWindowController: NSObject, NSWindowDelegate, WKNavigationDelega
             case "quit":
                 replyHandler(nil, nil)
                 DispatchQueue.main.async { NSApp.terminate(nil) }
+            case "topColor":
+                // 载荷形如 "38,42,41"
+                let parts = payload.flatMap { try? JSONSerialization.jsonObject(with: $0, options: .fragmentsAllowed) as? String }?
+                    .split(separator: ",").compactMap { Double($0) } ?? []
+                if parts.count == 3 { applyTopColor(red: parts[0], green: parts[1], blue: parts[2]) }
+                replyHandler(nil, nil)
             case "closingReady":
                 closingHandlerReady = true
                 replyHandler(nil, nil)
