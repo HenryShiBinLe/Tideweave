@@ -1029,3 +1029,4 @@ input[type=range]:hover::-webkit-slider-thumb{filter:brightness(1.15)}
 .tw-dialog .tw-sync-status{font-size:13px;margin:10px 0 0}
 .tw-sync-status[data-state=offline],.tw-sync-status[data-state=error],.tw-sync-status[data-state=paused]{color:var(--red)}
 @media (max-width:560px){.tw-sync-row{flex-direction:column}.tw-sync-input{flex:auto}}
+.tw-sync-switch{margin-top:14px;font-size:13px}.tw-sync-switch summary{cursor:pointer;color:var(--water);width:max-content}.tw-sync-switch p{margin:8px 0 0}

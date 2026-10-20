@@ -433,10 +433,11 @@ function syncText(s=sync.status()){
   return parts.join(' · ');
 }
 // 设置里的云同步区：没开启时给“开启”和“输入同步码”，开启后显示同步码和状态
+// 未开启：开启新码 / 输入已有码；已开启：显示同步码，也可改接其他码（防止误点“开启”后接不上原来的进度）
 function syncPanel(){
   const s=sync.status();
   if(s.state==='off')return `<section class="tw-sync"><h3>云同步</h3><p>开启后会得到一个同步码；在其他浏览器或设备上输入它，就能接着玩。设置不跟着同步。</p><div class="tw-sync-row">${btn('sync-enable','开启云同步','Cloud','primary')}</div><div class="tw-sync-row"><input class="tw-sync-input" data-sync-code type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" placeholder="已有同步码：XXXX-XXXX-XXXX" aria-label="输入同步码"/>${btn('sync-join','接上','LogIn')}</div></section>`;
-  return `<section class="tw-sync"><h3>云同步</h3><div class="tw-sync-code"><small>同步码</small><b>${esc(s.code)}</b>${ib('sync-copy','复制同步码','Copy')}</div><p class="tw-sync-status" data-sync-status data-state="${s.state}">${esc(syncText(s))}</p><div class="tw-sync-row">${btn('sync-now','立即同步','RefreshCw')}${btn('sync-disable','关闭云同步','CloudOff')}</div></section>`;
+  return `<section class="tw-sync"><h3>云同步</h3><div class="tw-sync-code"><small>同步码</small><b>${esc(s.code)}</b>${ib('sync-copy','复制同步码','Copy')}</div><p class="tw-sync-status" data-sync-status data-state="${s.state}">${esc(syncText(s))}</p><div class="tw-sync-row">${btn('sync-now','立即同步','RefreshCw')}${btn('sync-disable','关闭云同步','CloudOff')}</div><details class="tw-sync-switch"><summary>改用其他同步码</summary><p>输入另一台设备上的同步码，本机进度会和它合并后继续同步；当前这个码在云端的进度不会删除。</p><div class="tw-sync-row"><input class="tw-sync-input" data-sync-code type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20" placeholder="其他同步码：XXXX-XXXX-XXXX" aria-label="输入其他同步码"/>${btn('sync-join','接上','LogIn')}</div></details></section>`;
 }
 // 复制同步码：http 部署时没有 navigator.clipboard，退回到 execCommand
 function copyText(text){
