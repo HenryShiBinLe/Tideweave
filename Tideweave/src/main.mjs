@@ -17,7 +17,8 @@ const loadedAssets=Object.fromEntries(availableAssets.map(id=>[id,assetManifest[
 const app = document.querySelector("#app");
 const sessionCache=new Map();
 // 云同步：网页版读档、存档都经过同步层（见 docs/协作约定-存档与云同步.md 第六部分）；桌面版不创建，保持离线
-const sync=syncAvailable()?createSync():null;
+// 浏览器禁用站点数据时访问 localStorage 会抛错：这时不启用同步，游戏照原样运行（只是存不了档）
+const sync=(()=>{try{return syncAvailable()?createSync():null;}catch{return null;}})();
 const st = { screen: "home", chapter: 1, levelId: null, progress: fresh(), session: null, modal: null, player: null, timer: null, solid: null, net: false, tool: 0, target: 0, fault: "mark", probe: null, adjacency: false, speed: 1, saveMeta: {}, campaignTab:'main', selectedMission:null };
 const icon = (name, size = 16) => createElement(icons[name] || icons.Circle, { width: size, height: size, "aria-hidden": "true" }).outerHTML;
 const esc = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
