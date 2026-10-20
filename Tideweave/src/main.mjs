@@ -51,8 +51,8 @@ function save() {
   const data = structuredClone(st.progress);
   saveQueue = saveQueue.then(async () => {
     try {
-      if (window.tideweave) await window.tideweave.save(data);
-      else if (sync) sync.save(data); // 照旧先写本机 localStorage，再由同步层在后台推送
+      if (sync) sync.save(data); // 照旧先写本机 localStorage，再由同步层在后台推送（网页版、Mac 版）
+      else if (window.tideweave) await window.tideweave.save(data);
       else localStorage.setItem("tideweave-progress", JSON.stringify(data));
       st.saveFailed=false;
     } catch (e) {
@@ -213,7 +213,7 @@ function dialog() {
   if (st.modal === "rules") body = `<span class="tw-eyebrow">${esc(typeLabel(x))} / ${x.id}</span><h2>本关规则</h2><h3>怎样算通关</h3><p>${esc(x.goal)}。</p><h3>怎样操作</h3><p>${esc(x.controls)}</p><h3>还需要知道</h3><ul>${x.rules.map(rule=>`<li>${esc(rule)}</li>`).join('')}</ul>${x.badge ? `<p class="tw-insight">额外挑战：${esc(x.badge)}。这是徽记条件，不是普通通关条件。</p>` : ""}${btn("close", "返回关卡", "ArrowLeft", "primary")}`;
   if (st.modal === "hint") body = `<span class="tw-eyebrow">策略提示 / 自选</span><h2>再看一眼关系</h2><ol>${x.hints.slice(0, st.hintDepth ?? 1).map((h) => `<li>${esc(h)}</li>`).join("")}</ol><div>${(st.hintDepth ?? 1) < 3 ? btn("deeper", "再提示一点", "Lightbulb") : ""}${btn("close", "继续尝试", "ArrowLeft", "primary")}</div>`;
   if (st.modal === "result") body = `<span class="tw-eyebrow">${result.pass ? "运行通过" : "待调整"} / ${x.id}</span><h2>${result.pass ? result.perfect ? "联运有序" : "设施恢复" : "还需调整"}</h2><p>${esc(result.message)}</p>${result.pass && levels.filter(q=>q.unit===x.unit).at(-1).id===x.id ? `<p class="tw-insight">${esc(x.insight)}</p>` : ""}<div class="tw-result"><b>${result.metric}</b><span>${esc(result.unit)}</span>${result.perfect ? icon("Award", 22) : ""}</div><div>${btn("close", result.pass ? "继续优化" : "返回调整", "ArrowLeft")}${result.pass ? btn("continue", "继续", "ArrowRight", "primary") : ""}</div>`;
-  if (st.modal === "settings") body = `<span class="tw-eyebrow">本地设置</span><h2>游戏设置</h2><label>音效 <input data-setting="sound" type="checkbox" ${st.progress.settings.sound ? "checked" : ""}/></label><label>音量 <input data-setting="volume" type="range" min="0" max="1" step=".05" value="${st.progress.settings.volume}"/></label><label>减少动态效果 <input data-setting="motion" type="checkbox" ${st.progress.settings.motion ? "" : "checked"}/></label><p class="tw-small">${window.tideweave ? st.saveMeta.portable?'便携存档：data/progress.json':'存档：系统用户目录，迁移前请导出。' : "进度保存在浏览器本地。"}</p>${sync?syncPanel():''}<div class="tw-save-actions">${btn("export", "导出存档", "Download")}${btn("import", "导入存档", "Upload")}</div><footer class="tw-settings-footer"><div>${ib('fullscreen','全屏','Maximize')}${window.tideweave?ib('quit','退出游戏','LogOut'):''}</div>${btn("close", "完成", "Check", "primary")}</footer>`;
+  if (st.modal === "settings") body = `<span class="tw-eyebrow">本地设置</span><h2>游戏设置</h2><label>音效 <input data-setting="sound" type="checkbox" ${st.progress.settings.sound ? "checked" : ""}/></label><label>音量 <input data-setting="volume" type="range" min="0" max="1" step=".05" value="${st.progress.settings.volume}"/></label><label>减少动态效果 <input data-setting="motion" type="checkbox" ${st.progress.settings.motion ? "" : "checked"}/></label><p class="tw-small">${window.tideweave && !sync ? st.saveMeta.portable?'便携存档：data/progress.json':'存档：系统用户目录，迁移前请导出。' : window.tideweave ? '进度保存在本机。' : "进度保存在浏览器本地。"}</p>${sync?syncPanel():''}<div class="tw-save-actions">${btn("export", "导出存档", "Download")}${btn("import", "导入存档", "Upload")}</div><footer class="tw-settings-footer"><div>${ib('fullscreen','全屏','Maximize')}${window.tideweave?ib('quit','退出游戏','LogOut'):''}</div>${btn("close", "完成", "Check", "primary")}</footer>`;
   if (st.modal === "journal") body = `<span class="tw-eyebrow">EX / 筹算·回放</span><h2>已完成的调度</h2><div class="tw-journal">${levels.filter((q) => passed(q.id) && !q.tutorial).map((q) => `<button data-replay-id="${q.id}"><b>${q.id}</b><span>${esc(q.title)}</span>${icon("Play")}</button>`).join("") || "<p>完成任务后，这里会保存过程回放。</p>"}</div>`;
   if(st.modal==='briefing'){
     const ch=chapters.find(c=>c.id===st.briefingChapter)??chapters.find(c=>c.id===st.chapter);
@@ -738,7 +738,7 @@ app.addEventListener('keydown',e=>{
   if(/^[1-6]$/.test(e.key)&&['color','solid','groups','scc'].includes(l().type)){st.tool=Number(e.key)-1;render();}
 });
 try {
-  const loaded = window.tideweave ? await window.tideweave.load() : sync ? sync.load() : { data: JSON.parse(localStorage.getItem("tideweave-progress") || "null") };
+  const loaded = sync ? sync.load() : window.tideweave ? await window.tideweave.load() : { data: JSON.parse(localStorage.getItem("tideweave-progress") || "null") };
   st.saveMeta = loaded;
   st.progress = normalize(loaded?.data);
   st.chapter = st.progress.chapter;
@@ -755,4 +755,5 @@ if(sync){
   });
   sync.start({progress:st.progress,apply:applyCloud,canApply:canApplyCloud});
 }
-window.tideweave?.onClosing(async()=>{await save();window.tideweave.confirmClose(!st.saveFailed);});
+// 关窗前先存档；开着云同步时再尽量把改动推上去（最多等 3 秒，断网也不拦着退出）
+window.tideweave?.onClosing(async()=>{await save();if(sync)await Promise.race([sync.syncNow().catch(()=>{}),new Promise(r=>setTimeout(r,3000))]);window.tideweave.confirmClose(!st.saveFailed);});

@@ -16,7 +16,8 @@ final class GameWindowController: NSObject, NSWindowDelegate, WKNavigationDelega
     private var closeConfirmed = false
     var canTerminate: Bool { closeConfirmed || !closingHandlerReady }
 
-    // 注入到页面最前面的桥接脚本：所有参数和返回值都走 JSON 字符串，避免 WebKit 自动类型转换带来的偏差
+    // 注入到页面最前面的桥接脚本：所有参数和返回值都走 JSON 字符串，避免 WebKit 自动类型转换带来的偏差。
+    // sync: true 让前端照网页版的方式存档（localStorage）并开启云同步，/api/ 请求由 BundleSchemeHandler 代理
     private static let bridgeScript = """
     (() => {
       const port = window.webkit.messageHandlers.tideweave;
@@ -32,6 +33,7 @@ final class GameWindowController: NSObject, NSWindowDelegate, WKNavigationDelega
         import: () => call('import'),
         fullscreen: () => call('fullscreen'),
         quit: () => call('quit'),
+        sync: true,
         onClosing: callback => { closing = callback; call('closingReady'); },
         confirmClose: ok => call('confirmClose', ok === true)
       })});
@@ -44,7 +46,13 @@ final class GameWindowController: NSObject, NSWindowDelegate, WKNavigationDelega
         if (!document.body) return;
         let r = 0, g = 0, b = 0, remain = 1;
         for (const el of document.elementsFromPoint(4, 1)) {
-          const c = parse(getComputedStyle(el).backgroundColor);
+          // 打开的模态 <dialog> 在顶层，点在它外面时命中的是它的 ::backdrop 遮罩，要取遮罩色而不是对话框底色
+          let style = getComputedStyle(el);
+          if (el.tagName === 'DIALOG' && el.open) {
+            const box = el.getBoundingClientRect();
+            if (box.left > 4 || box.top > 1) style = getComputedStyle(el, '::backdrop');
+          }
+          const c = parse(style.backgroundColor);
           if (!c || c.length < 3) continue;
           const a = c.length > 3 ? c[3] : 1;
           if (a <= 0) continue;
@@ -96,12 +104,13 @@ final class GameWindowController: NSObject, NSWindowDelegate, WKNavigationDelega
         window.setFrameAutosaveName("TideweaveMain")
 
         let config = WKWebViewConfiguration()
-        config.setURLSchemeHandler(BundleSchemeHandler(root: distRoot), forURLScheme: BundleSchemeHandler.scheme)
-        // 桌面版只用原生存档，不需要也不保留任何网页存储
-        config.websiteDataStore = .nonPersistent()
+        config.setURLSchemeHandler(BundleSchemeHandler(root: distRoot, syncServer: Self.syncServer), forURLScheme: BundleSchemeHandler.scheme)
+        // 存档和同步状态都在网页存储里（与网页版一致），必须持久化
+        config.websiteDataStore = .default()
         config.mediaTypesRequiringUserActionForPlayback = []
         let controller = config.userContentController
-        controller.addUserScript(WKUserScript(source: Self.bridgeScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        controller.addUserScript(WKUserScript(source: Self.migrationScript(store: store) + Self.bridgeScript,
+                                              injectionTime: .atDocumentStart, forMainFrameOnly: true))
         controller.addScriptMessageHandler(self, contentWorld: .page, name: "tideweave")
 
         webView = WKWebView(frame: .zero, configuration: config)
@@ -116,7 +125,28 @@ final class GameWindowController: NSObject, NSWindowDelegate, WKNavigationDelega
         window.contentView = webView
     }
 
-    /// 先装好「禁止联网」规则再加载页面，与 Electron 版拦截所有 http/ws 请求的做法一致
+    /// 同步服务地址：默认是 Info.plist 里的 TideweaveSyncServer，
+    /// 可用 `defaults write local.tideweave.mac SyncServer http://主机:端口` 临时改
+    private static var syncServer: URL? {
+        let value = UserDefaults.standard.string(forKey: "SyncServer")
+            ?? Bundle.main.object(forInfoDictionaryKey: "TideweaveSyncServer") as? String
+        return value.flatMap(URL.init(string:))
+    }
+
+    private static let migratedKey = "MigratedNativeSave"
+
+    /// 早期 Mac 版把进度存在 Application Support 的 progress.json；
+    /// 第一次以同步模式启动时把它写进网页存储（网页存储里已有进度就不动），之后不再执行
+    private static func migrationScript(store: SaveStore) -> String {
+        guard !UserDefaults.standard.bool(forKey: migratedKey) else { return "" }
+        UserDefaults.standard.set(true, forKey: migratedKey)
+        guard let raw = try? Data(contentsOf: store.file), (try? SaveStore.validate(raw)) != nil,
+              let literal = try? String(decoding: JSONEncoder().encode(String(decoding: raw, as: UTF8.self)), as: UTF8.self)
+        else { return "" }
+        return "try { if (!localStorage.getItem('tideweave-progress')) localStorage.setItem('tideweave-progress', \(literal)); } catch {}\n"
+    }
+
+    /// 先装好「禁止联网」规则再加载页面：网页本身不直接联网，同步请求只经原生代理发往同步服务
     func start() {
         let rules = #"[{"trigger":{"url-filter":"^(https?|wss?)://"},"action":{"type":"block"}}]"#
         WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "tideweave-offline", encodedContentRuleList: rules) { [weak self] list, _ in

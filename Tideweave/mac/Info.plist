@@ -30,6 +30,14 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>TideweaveSyncServer</key>
+	<string>http://31.58.87.41:8080</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- 同步服务目前是 IP + 明文 http，ATS 不支持按 IP 设例外，只能整体放开；网页本身不能直接联网 -->
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
 </dict>

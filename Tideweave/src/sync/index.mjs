@@ -20,8 +20,9 @@ function serverAddress() {
   }
 }
 
-// 当前环境能不能用云同步：网页版可以；桌面版（Electron 提供 window.tideweave）保持离线
-export const syncAvailable = () => typeof window !== "undefined" && !window.tideweave && typeof localStorage !== "undefined";
+// 当前环境能不能用云同步：网页版可以；Windows 桌面版（Electron 提供 window.tideweave）保持离线；
+// Mac 原生版的 window.tideweave 带 sync: true，表示由它代理同步请求，照网页版的方式存档和同步
+export const syncAvailable = () => typeof window !== "undefined" && (!window.tideweave || window.tideweave.sync === true) && typeof localStorage !== "undefined";
 
 // 用浏览器的默认环境创建同步层（localStorage、window、document、同源服务地址）
 export function createSync(options = {}) {
