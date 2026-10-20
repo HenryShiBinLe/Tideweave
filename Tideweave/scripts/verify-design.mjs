@@ -22,12 +22,15 @@ try{
   await page.goto(url);
   await page.evaluate(()=>document.fonts.ready);
   assert.ok(await page.evaluate(()=>document.fonts.check('700 25px TideweaveSerif')),'bundled display font loaded');
-  const variation=await page.locator('#tw-city').evaluate(c=>{
+  await page.locator('.tw-city-art').evaluate(image=>image.decode());
+  await page.waitForFunction(()=>document.querySelector('#tw-city')?.hidden===true);
+  const variation=await page.locator('.tw-city-art').evaluate(image=>{
+    const c=document.createElement('canvas');c.width=160;c.height=90;c.getContext('2d').drawImage(image,0,0,160,90);
     const data=c.getContext('2d').getImageData(0,0,c.width,c.height).data,colors=new Set();
     for(let i=0;i<data.length;i+=400)colors.add(`${data[i]},${data[i+1]},${data[i+2]}`);
     return colors.size;
   });
-  assert.ok(variation>30,'procedural city is nonblank');
+  assert.ok(variation>30,'provided home scene is nonblank and replaces the fallback');
   await click('[data-level="01-01.1"]');
   assert.equal(await page.locator('dialog').count(),0,'first level opens without a briefing');
   await page.reload();await click('[data-level="01-01.1"]');

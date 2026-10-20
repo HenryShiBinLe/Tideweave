@@ -1,11 +1,47 @@
 export const assetManifest={
-  A01:{name:'澜州·水网远景',path:'assets/scenes/lanzhou_waterworks.webp',size:[2400,1350],anchor:'center',status:'待用户提供；程序工程示意图替代',fallback:'procedural city canvas'},
-  A02:{name:'水脉·微纹',path:'assets/textures/waterline.png',size:[512,512],status:'可选；当前程序绘制',fallback:'canvas contours'},
-  A03:{name:'工纸·细纹',path:'assets/textures/project_paper.png',size:[512,512],status:'可选；当前程序绘制',fallback:'canvas paper'},
-  A04:{name:'枢印·调度',path:'assets/nodes/hub_mark.png',size:[256,256],anchor:'center',padding:0.12,status:'可选；当前程序图形',fallback:'hub glyph'},
-  A05:{name:'枢印·设施',path:'assets/nodes/facility_mark.png',size:[256,256],anchor:'center',padding:0.12,status:'可选；当前程序图形',fallback:'facility glyph'},
-  A06:{name:'行令·巡运',path:'assets/actors/dispatch_token.png',size:[128,128],anchor:'center',direction:'right',padding:0.12,status:'可选；当前程序图形',fallback:'dispatch marker'}
+  A01:{name:'澜州·水网远景',path:'assets/scenes/lanzhou_waterworks.webp',size:[1670,941],anchor:'center',status:'已提供',fallback:'procedural city canvas'},
+  A02:{name:'水脉·微纹',path:'assets/textures/waterline.png',size:[1254,1254],status:'已提供',fallback:'canvas contours'},
+  A03:{name:'工纸·细纹',path:'assets/textures/project_paper.png',size:[1254,1254],status:'已提供',fallback:'canvas paper'},
+  A06:{name:'行令·巡运',path:'assets/actors/dispatch_token.png',size:[1254,1254],anchor:'center',direction:'right',padding:0.12,status:'已提供',fallback:'dispatch marker'},
+  chapter_01_network:{name:'接通信号·水网',path:'assets/scenes/chapter_01_network.webp',size:[1621,970],status:'已提供'},
+  chapter_02_transport:{name:'沿路送达·联运',path:'assets/scenes/chapter_02_transport.webp',size:[1619,971],status:'已提供'},
+  chapter_03_construction:{name:'连网开工·工地',path:'assets/scenes/chapter_03_construction.webp',size:[1622,969],status:'已提供'},
+  chapter_04_fields:{name:'田区配色·田畴',path:'assets/scenes/chapter_04_fields.webp',size:[1619,971],status:'已提供'},
+  chapter_05_resilience:{name:'守护水城·堤防',path:'assets/scenes/chapter_05_resilience.webp',size:[1619,971],status:'已提供'},
+  node_station:{name:'节点·服务站',path:'assets/nodes/node_station.png',size:[1254,1254],status:'已提供'},
+  node_patrol_station:{name:'节点·巡运站',path:'assets/nodes/node_patrol_station.png',size:[1254,1254],status:'已提供'},
+  node_access_gate:{name:'节点·入口关卡',path:'assets/nodes/node_access_gate.png',size:[1254,1254],status:'已提供'},
+  node_network_junction:{name:'节点·线路接点',path:'assets/nodes/node_network_junction.png',size:[1254,1254],status:'已提供'},
+  node_road_point:{name:'节点·街道接点',path:'assets/nodes/node_road_point.png',size:[1254,1254],status:'已提供'},
+  node_riverbank:{name:'节点·河岸',path:'assets/nodes/node_riverbank.png',size:[1254,1254],status:'已提供'},
+  node_harbor:{name:'节点·港口',path:'assets/nodes/node_harbor.png',size:[1254,1254],status:'已提供'},
+  node_district:{name:'节点·城区',path:'assets/nodes/node_district.png',size:[1254,1254],status:'已提供'},
+  node_group_mask:{name:'分组·染色底座',path:'assets/nodes/node_group_mask.png',size:[1536,1024],status:'已提供'},
+  field_surface_gray:{name:'田区·灰度材质',path:'assets/textures/field_surface_gray.png',size:[1254,1254],status:'已提供'},
+  light_panel_gray:{name:'灯面·灰度材质',path:'assets/textures/light_panel_gray.png',size:[1254,1254],status:'已提供'},
+  node_bridge:{name:'节点·桥',path:'assets/nodes/node_bridge.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_cargo_station:{name:'节点·货运站',path:'assets/nodes/node_cargo_station.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_channel:{name:'节点·渠道',path:'assets/nodes/node_channel.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_complete:{name:'状态·完成',path:'assets/nodes/node_complete.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_conflict:{name:'状态·冲突',path:'assets/nodes/node_conflict.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_field_entry:{name:'节点·田间入口',path:'assets/nodes/node_field_entry.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_highlight:{name:'状态·选中',path:'assets/nodes/node_highlight.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_hub:{name:'节点·调度枢纽',path:'assets/nodes/node_hub.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_power_station:{name:'节点·电站',path:'assets/nodes/node_power_station.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_pump_station:{name:'节点·泵站',path:'assets/nodes/node_pump_station.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_receiver:{name:'节点·接收器',path:'assets/nodes/node_receiver.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_receiving_point:{name:'节点·收货点',path:'assets/nodes/node_receiving_point.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_relay_station:{name:'节点·中继站',path:'assets/nodes/node_relay_station.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_signal_source:{name:'节点·信号源',path:'assets/nodes/node_signal_source.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_sluice:{name:'节点·闸门',path:'assets/nodes/node_sluice.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_valve:{name:'节点·阀门',path:'assets/nodes/node_valve.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_warehouse:{name:'节点·仓储',path:'assets/nodes/node_warehouse.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  node_well:{name:'节点·水井',path:'assets/nodes/node_well.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  source_marker:{name:'标识·发射源',path:'assets/nodes/source_marker.png',size:[1254,1254],anchor:'center',status:'已提供'},
+  road_arrow:{name:'标识·方向箭头',path:'assets/roads/road_arrow.png',size:[1054,1054],anchor:'center',status:'已提供'},
+  road_strip:{name:'道路·路段',path:'assets/roads/road_strip.png',size:[1983,793],anchor:'center',status:'已提供'}
 };
-export const palette=['#256f75','#c2a161','#78557b','#4f6e4b','#c67760','#526b98'];
-export const paletteText=['#ffffff','#202525','#ffffff','#ffffff','#202525','#ffffff'];
-export const colorNames=['水青','赭金','烟紫','稻青','陶朱','黛蓝'];
+export const chapterSceneKeys={1:'chapter_01_network',2:'chapter_02_transport',3:'chapter_03_construction',4:'chapter_04_fields',5:'chapter_05_resilience'};
+export const palette=['#8cb9b3','#e3cb8e','#bdaabd','#b0bd93','#d69d86','#9cb6ca'];
+export const paletteText=['#202629','#202629','#202629','#202629','#202629','#202629'];
+export const colorNames=['青瓷','麦金','藕灰','竹青','陶朱','雾蓝'];

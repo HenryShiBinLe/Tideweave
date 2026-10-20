@@ -22,7 +22,7 @@ async function edgePoint(id,kind='line'){
   return page.locator(`[data-edge="${id}"]`).evaluate((el,kind)=>{
     const line=el.querySelector('.edge-line');
     if(kind==='weight'){
-      const b=el.querySelector('.weight rect').getBoundingClientRect();
+      const b=el.querySelector('.weight-plate').getBoundingClientRect();
       const p={x:b.x+b.width/2,y:b.y+b.height/2};
       return {...p,hit:document.elementFromPoint(p.x,p.y)?.closest('[data-edge]')?.dataset.edge};
     }

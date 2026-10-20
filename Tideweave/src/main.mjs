@@ -8,9 +8,9 @@ import { SolidView } from "./solid-view.mjs";
 import { solids } from "./solids.mjs";
 import { palette, paletteText, colorNames } from "./assets.mjs";
 import { drawCity } from "./city.mjs";
-import { captureUI, animateUI, syncMotion } from './ui-motion.mjs';
+import { captureUI, animateUI, syncMotion, dismissDialog, renderUI } from './ui-motion.mjs';
 import {pathCost,criticalSchedule,floydStages,groups} from './algorithms.mjs';
-import {assetManifest} from './assets.mjs';
+import {assetManifest,chapterSceneKeys} from './assets.mjs';
 const availableAssets=typeof __ASSET_FILES__==='undefined'?[]:__ASSET_FILES__;
 const loadedAssets=Object.fromEntries(availableAssets.map(id=>[id,assetManifest[id].path]));
 const app = document.querySelector("#app");
@@ -21,7 +21,8 @@ const esc = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const l = () => levelById[st.levelId], r = () => st.progress.records[st.levelId] ?? {}, s = () => st.session?.state;
 const viewState = () => st.player?.mode === 'replay' ? { ...st.player.state, ...st.player.frames[st.player.index]?.state } : s();
 const typeLabel = (x) => ({reach:'找相通设施',groups:'分区标记',dfs:'巡检路线',broadcast:'传播预测',forest:'保留线路',scc:'互达分组',euler:'线路巡运',shortest:'路线规划',routes:'多份运单',floyd:'中转比较',postman:'闭环巡运',mst:'建设线路',topo:'工序排序',cycle:'找出循环',schedule:'安排加速',color:'区域上色',solid:'立体上色',matching:'岗位安排',fault:'故障测试',isolation:'隔离设备',cut:'停线断开',reinforce:'线路加固'}[x.type]??'图上操作');
-const btn = (action2, text, ico = "", cls = "", extra = "") => `<button class="tw-btn ${cls}" data-action="${action2}" ${extra}>${ico ? icon(ico) : ""}<span>${esc(text)}</span></button>`;
+const controlDetail = () => `<svg class="tw-control-detail" viewBox="0 0 48 36" aria-hidden="true" focusable="false"><path class="detail-plate" d="M20 2H46V22H34V34H8V24H20Z"/><path class="detail-track" d="M3 30H16V18H29V6H44M8 35H21V23H34V11H47"/><path class="detail-flow" pathLength="100" d="M3 30H16V18H29V6H44"/><circle class="detail-cap" cx="29" cy="6" r="2"/></svg>`;
+const btn = (action2, text, ico = "", cls = "", extra = "") => `<button class="tw-btn ${cls}" data-action="${action2}" ${extra}>${ico ? icon(ico) : ""}<span>${esc(text)}</span>${['settings','quit','fullscreen'].includes(action2)?'':controlDetail()}</button>`;
 const ib = (action2, label, ico, extra = "") => `<button class="tw-icon" data-action="${action2}" aria-label="${esc(label)}" title="${esc(label)}" ${extra}>${icon(ico)}</button>`;
 const reduced = () => !st.progress.settings.motion || matchMedia("(prefers-reduced-motion: reduce)").matches;
 let toastTimer, saveQueue = Promise.resolve();
@@ -99,6 +100,7 @@ function home() {
 }
 function map() {
   const ch=chapters.find(x=>x.id===st.chapter),ls=levels.filter(x=>x.chapter===st.chapter),main=ls.filter(x=>!x.optional);
+  const scene=loadedAssets[chapterSceneKeys[ch.id]];
   const done=main.filter(x=>passed(x.id)).length,side=st.campaignTab==='optional';
   const shown=ls.filter(x=>!!x.optional===side);
   let selected=shown.find(x=>x.id===st.selectedMission)??shown.find(x=>unlock(x.id)&&!passed(x.id))??shown[0];
@@ -114,8 +116,8 @@ function map() {
     </section>`).join('');
   const record=selected?st.progress.records[selected.id]:null;
   const detail=selected?`<aside class="tw-deployment" aria-label="所选关卡">
-    <div class="tw-deployment-top"><span class="tw-eyebrow">${selected.optional?'EX / 选修挑战':'MAIN / 主线任务'}</span>${icon('Flag',20)}</div><div class="tw-deployment-code">${selected.id}</div>
-    <h2>${esc(selected.title)}</h2><span class="tw-mission-status">${!unlock(selected.id)?'尚未开放':record?.legacy?'旧版已通关 · 新版可重玩':record?.perfect?'徽记已取得':record?.passed?'已通关':selected.tutorial?'操作入门':'待完成'}</span>
+    <div class="tw-deployment-top"><span class="tw-eyebrow">${selected.optional?'EX / 选修挑战':'MAIN / 主线任务'}</span>${icon('Flag',20)}</div><div class="tw-deployment-identity"><div class="tw-deployment-code">${selected.id}</div>
+    <h2>${esc(selected.title)}</h2><span class="tw-mission-status">${!unlock(selected.id)?'尚未开放':record?.legacy?'旧版已通关 · 新版可重玩':record?.perfect?'徽记已取得':record?.passed?'已通关':selected.tutorial?'操作入门':'待完成'}</span></div>
     <div class="tw-deployment-goal"><h3>本关目标</h3><p>${esc(selected.goal)}</p></div>
     ${selected.badge?`<div class="tw-deployment-badge">${icon('Award')}<span>徽记挑战<br><b>${esc(selected.badge)}</b></span></div>`:''}
     ${!unlock(selected.id)?`<p class="tw-lock-reason">${icon('Lock')}${esc(lockReason(selected))}</p>`:''}
@@ -123,7 +125,7 @@ function map() {
     </aside>`:'<aside class="tw-deployment"><h2>本章没有选修任务</h2></aside>';
   return `<main class="tw-campaign">${header()}<div class="tw-campaign-heading"><div>${ib('title-home','返回主菜单','ArrowLeft')}<h1>章节选择</h1></div><span>${levels.filter(x=>st.progress.records[x.id]?.perfect).length} 枚徽记</span></div>
     <nav class="tw-chapters" aria-label="章节">${chapters.map(c=>`<button data-chapter="${c.id}" class="${c.id===st.chapter?'active':''}" aria-current="${c.id===st.chapter?'page':'false'}"><span class="tw-chapter-number">${String(c.id).padStart(2,'0')}</span><b>${esc(c.title)}</b><span class="tw-chapter-check">${chapterDone(c.id)?icon('Check',15):''}</span></button>`).join('')}</nav>
-    <section class="tw-campaign-summary"><span class="tw-chapter-watermark" aria-hidden="true">${String(ch.id).padStart(2,'0')}</span><div class="tw-chapter-copy"><span class="tw-eyebrow">${esc(ch.scene)}</span><h2>${esc(ch.title)}</h2><p>${esc(ch.purpose)}</p></div><div class="tw-campaign-completion"><b>${done}<small> / ${main.length}</small></b><span>普通关卡</span><progress value="${done}" max="${main.length}" aria-label="本章完成进度"></progress></div></section>
+    <section class="tw-campaign-summary">${scene?`<img class="tw-campaign-scene" src="${esc(scene)}" alt="" aria-hidden="true" draggable="false"/>`:''}<span class="tw-chapter-watermark" aria-hidden="true">${String(ch.id).padStart(2,'0')}</span><div class="tw-chapter-copy"><span class="tw-eyebrow">${esc(ch.scene)}</span><h2>${esc(ch.title)}</h2><p>${esc(ch.purpose)}</p></div><div class="tw-campaign-completion"><b>${done}<small> / ${main.length}</small></b><span>普通关卡</span><progress value="${done}" max="${main.length}" aria-label="本章完成进度"></progress></div></section>
     <div class="tw-route-toolbar"><div class="tw-segment" role="group" aria-label="任务分类"><button data-campaign-tab="main" aria-pressed="${!side}" class="${side?'':'selected'}">${icon('Route')}主线</button><button data-campaign-tab="optional" aria-pressed="${side}" class="${side?'selected':''}" ${ls.some(x=>x.optional)?'':'disabled'}>${icon('Compass')}选修 <small>${ls.filter(x=>x.optional).length}</small></button></div>${chapterDone(ch.id)?btn('chapter-note','章节手记','BookOpen'):''}</div>
     <div class="tw-campaign-body"><section class="tw-route-map" aria-label="关卡路线">${rows}</section>${detail}</div></main>`;
 }
@@ -144,6 +146,13 @@ function metric() {
   if (x.type === "floyd") return `已选 ${v.pairs.length} 组`;
   return `已标记 ${v.selected.length} 项`;
 }
+function metricOutput() {
+  const x = l(), v = viewState();
+  if (st.player?.mode === 'replay' || !['mst', 'reinforce'].includes(x.type)) return `<output aria-live="polite">${esc(metric())}</output>`;
+  const cost = v.selected.reduce((sum, i) => sum + (x.edges[i]?.w ?? 1), 0);
+  const parts = x.type === 'mst' ? groups(x, v.selected).length : null;
+  return `<output class="tw-cost" aria-live="polite"><span class="tw-cost-label">${x.type === 'reinforce' ? '新增造价' : '造价'}</span><strong>${cost}</strong><span class="tw-cost-limit">/ ${x.budget}<small>预算</small></span>${parts === null ? '' : `<span class="tw-cost-status">${parts === 1 ? '已全部接通' : `还分为 ${parts} 片`}</span>`}</output>`;
+}
 function toolbar() {
   const x = l(), v = s();
   let out = "";
@@ -158,27 +167,28 @@ function toolbar() {
 }
 function board() {
   const x = l(), v = viewState(), result = st.player ? null : st.session.result, frame = st.player?.frames[st.player.index];
-  if(frame?.condensed) return condensedBoard(x, frame.condensed);
+  if(frame?.condensed) return condensedBoard(x, frame.condensed, loadedAssets);
   if (x.type === "solid" && !st.net && !st.webglFailed) return '<div id="tw-solid" class="tw-solid"></div>';
-  if (x.type === "solid") return netBoard(x, v, result);
-  if (x.type === "color") return regionBoard(x, v, { result, adjacency: st.adjacency });
+  if (x.type === "solid") return netBoard(x, v, result, loadedAssets);
+  if (x.type === "color") return regionBoard(x, v, { result, adjacency: st.adjacency, images: loadedAssets });
   if (x.type === "floyd") return `<div class="tw-floyd-board"><div class="tw-transit-map"><p>直达道路 · 数字为直达用时</p>${graphBoard(x,v,{result,frame,images:loadedAssets})}</div><div class="tw-floyd"><p>${frame?.matrix ? esc(frame.caption) : `原可中转：${esc(x.nodes.slice(0,x.stage).map(n=>n.label).join('、')||'无')} → 新增：${esc(x.nodes[x.stage].label)}`}</p>${frame?.matrix ? distanceTable(x, frame.matrix) : floydTable(x, v)}</div></div>`;
   return graphBoard(x, v, { result, frame, target: st.target,images:loadedAssets });
 }
 function game() {
   const x = l(), v = viewState(), result = st.player ? null : st.session.result;
   const chapter = chapters.find(c => c.id === x.chapter);
+  const scene = loadedAssets[chapterSceneKeys[x.chapter]];
   return `<main class="tw-game">
     <header class="tw-mission-head">
       ${ib("home", "返回任务地图", "ArrowLeft")}
       <div class="tw-mission-ident"><span class="tw-eyebrow">${esc(chapter.title)}</span><h1>${esc(x.title)}</h1></div><span class="tw-level-code">${x.id}</span>
       <div class="tw-header-actions">${ib("sound", st.progress.settings.sound ? "关闭音效" : "开启音效", st.progress.settings.sound ? "Volume2" : "VolumeX")}${ib("settings", "设置", "Settings")}</div>
     </header>
-    <section class="tw-task"><div class="tw-task-copy"><span class="tw-task-kicker">通关目标</span><h2>${esc(x.goal)}</h2><div class="tw-control-line"><span>${icon('MousePointer2')}操作</span><p>${esc(x.controls)}</p></div></div>
+    <section class="tw-task"><div class="tw-task-copy"><div class="tw-goal-line"><span class="tw-task-kicker">通关目标</span><h2>${esc(x.goal)}</h2></div><div class="tw-control-line"><span>${icon('MousePointer2')}操作</span><p>${esc(x.controls)}</p></div></div>
       ${x.badge ? `<aside>${icon("Award")}<span>额外挑战<br><b>${esc(x.badge)}</b></span></aside>` : ""}
     </section>
-    <div class="tw-context-tools ${toolbar()?'':'status-only'}">${toolbar()}<output aria-live="polite">${metric()}</output></div>
-    <section class="tw-board ${x.type === "solid" ? "solid-board" : ""}">${board()}${x.type === "schedule" ? timeline(x, v) : ""}</section>
+    <div class="tw-context-tools ${toolbar()?'':'status-only'}">${toolbar()}${metricOutput()}</div>
+    <section class="tw-board ${x.type === "solid" ? "solid-board" : ""}${scene ? ' has-chapter-scene' : ''}">${scene ? `<img class="tw-chapter-scene" src="${esc(scene)}" alt="" aria-hidden="true" draggable="false"/>` : ''}<div class="tw-board-frame" aria-hidden="true"><i class="frame-corner nw"></i><i class="frame-corner ne"></i><i class="frame-corner sw"></i><i class="frame-corner se"></i><i class="frame-register"></i></div>${board()}${x.type === "schedule" ? timeline(x, v) : ""}</section>
     ${st.player ? playback() : `<div class="tw-feedback" aria-live="polite">${result ? `${icon(result.pass ? "Check" : "Info")}<span class="${result.pass ? "good" : "warn"}">${esc(result.message)}</span>` : ""}</div>`}
     <footer class="tw-operation"><div>
       ${ib("undo", "撤销", "Undo2", st.session.history.length ? "" : "disabled")}${ib("redo", "重做", "Redo2", st.session.future.length ? "" : "disabled")}${ib("reset", "重置方案", "RotateCcw")}
@@ -219,6 +229,8 @@ function dialog() {
 function render() {
   const previous=captureUI(app);
   syncMotion(st.progress.settings.motion);
+  const view={screen:st.screen,chapter:st.chapter,tab:st.campaignTab,level:st.levelId,selected:st.selectedMission,modal:st.modal,replay:!!st.player,net:st.net};
+  return renderUI(previous.view,view,reduced(),()=>{
   const focus=document.activeElement;
   const focused=focus?.matches(':focus-visible') && focus.matches('[data-node],[data-edge],[data-tool],[data-target],[data-mode],[data-action]')?Object.entries(focus.dataset).find(([k])=>['node','edge','tool','target','mode','action'].includes(k)):null;
   const scroll=document.querySelector('.tw-board')?.scrollLeft??0;
@@ -228,12 +240,12 @@ function render() {
   if (st.screen === "home") {
     const c = document.querySelector("#tw-city");
     if (c) drawCity(c, chapters.filter((x) => chapterDone(x.id)).length);
-    if(loadedAssets.A01){const img=document.createElement('img');img.className='tw-city-art';img.alt='澜州水网远景';img.src=loadedAssets.A01;img.onerror=()=>img.remove();c.after(img);}
+    if(loadedAssets.A01){const img=document.createElement('img');img.className='tw-city-art';img.alt='澜州水网远景';img.onload=()=>{c.hidden=true;};img.onerror=()=>{c.hidden=false;img.remove();};img.src=loadedAssets.A01;c.after(img);}
   } else if (st.screen==='game' && l().type === "solid" && !st.net && !st.webglFailed) {
     try {
       st.solid = new SolidView(document.querySelector("#tw-solid"), l().solid, (id) => edit("node", id, st.tool), (rot) => {
         st.rotation = rot;
-      }, st.rotation);
+      }, st.rotation, loadedAssets.light_panel_gray);
       st.solid.setColors(viewState().colors, st.player ? [] : st.session.result?.nodes ?? []);
     } catch {
       st.webglFailed = true;
@@ -244,15 +256,6 @@ function render() {
     }
   }
   bind();
-  if(st.screen==='game'){
-    const ns='http://www.w3.org/2000/svg';
-    app.querySelectorAll('.station').forEach((el,i)=>{
-      if(['topo','schedule','cycle','matching'].includes(l().type))return;
-      const source=i===(l().source??-1)?loadedAssets.A04:loadedAssets.A05;
-      if(source){const im=document.createElementNS(ns,'image');im.setAttribute('href',source);im.setAttribute('x','-31');im.setAttribute('y','-31');im.setAttribute('width','62');im.setAttribute('height','62');im.style.pointerEvents='none';im.addEventListener('error',()=>im.remove());el.querySelector('.station-body')?.after(im);}
-      if(loadedAssets.A06&&el.classList.contains('current')){const im=document.createElementNS(ns,'image');im.setAttribute('href',loadedAssets.A06);im.setAttribute('x','-15');im.setAttribute('y','-56');im.setAttribute('width','30');im.setAttribute('height','30');im.style.pointerEvents='none';im.addEventListener('error',()=>im.remove());el.append(im);}
-    });
-  }
   if(st.player){const bar=app.querySelector('.tw-playback');bar.insertAdjacentHTML('beforeend',`<select class="tw-speed" aria-label="回放速度">${[.5,1,2,3].map(v=>`<option value="${v}" ${st.progress.settings.speed===v?'selected':''}>${v}×</option>`).join('')}</select>`);bar.querySelector('select').onchange=e=>{st.progress.settings.speed=Number(e.target.value);save();step();};}
   if(st.modal==='settings'){
     const el=app.querySelector('dialog');
@@ -261,7 +264,8 @@ function render() {
   const d=app.querySelector('dialog');if(d){d.showModal();d.addEventListener('cancel',e=>{e.preventDefault();action('close');});}
   else if(focused)app.querySelector(`[data-${focused[0]}="${CSS.escape(focused[1])}"]`)?.focus({preventScroll:true});
   const boardEl=app.querySelector('.tw-board');if(boardEl)boardEl.scrollLeft=scroll;
-  animateUI(app,previous,{screen:st.screen,chapter:st.chapter,tab:st.campaignTab,level:st.levelId,selected:st.selectedMission,modal:st.modal},reduced());
+  animateUI(app,previous,view,reduced());
+  });
 }
 function open(id) {
   const x = levelById[id];
@@ -410,6 +414,9 @@ async function importSave() {
   }
 }
 async function action(name) {
+  if(st.modal&&['close','continue','next-chapter','ack-briefing','chapter-optional','own-replay','confirm-reset'].includes(name)){
+    if(!await dismissDialog(app.querySelector('dialog'),reduced()))return;
+  }
   if(name==='resume'){open(campaignNext().id);return;}
   if(name==='title-home'){stop();st.screen='home';st.levelId=null;st.session=null;st.modal=null;render();return;}
   if(name==='campaign'){st.screen='map';st.selectedMission=null;st.modal=null;render();return;}
@@ -430,7 +437,7 @@ async function action(name) {
     if(!unit||!chapterDone(chapter))return;
     st.chapter=chapter;
     await action('home');
-    st.campaignTab='optional';st.selectedMission=null;render();
+    st.campaignTab='optional';st.selectedMission=null;await render();
     app.querySelector(`[data-unit="${unit.id}"]`)?.scrollIntoView({block:'start'});
     return;
   }
@@ -619,7 +626,8 @@ function bind() {
   }));
   app.querySelectorAll("[data-node]").forEach((e) => e.addEventListener("click", () => edit("node", Number(e.dataset.node), l().type==='routes'?st.target:st.tool)));
   app.querySelectorAll("[data-edge]").forEach((e) => e.addEventListener("click", () => edit("edge", Number(e.dataset.edge))));
-  app.querySelectorAll("[data-replay-id]").forEach((e) => e.addEventListener("click", () => {
+  app.querySelectorAll("[data-replay-id]").forEach((e) => e.addEventListener("click", async () => {
+    if(!await dismissDialog(app.querySelector('dialog'),reduced()))return;
     st.modal = null;
     replay(e.dataset.replayId);
   }));

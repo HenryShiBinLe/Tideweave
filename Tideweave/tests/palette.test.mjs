@@ -14,5 +14,6 @@ test('all six game colors keep readable labels on plain and patterned fills',()=
     const background=rgb(color),ink=rgb(paletteText[i]);
     assert.ok(contrast(background,ink)>=4.5,colorNames[i]+' plain fill');
     assert.ok(contrast(background.map(x=>x*.92+.08),ink)>=4.5,colorNames[i]+' stripe fill');
+    assert.ok(contrast(background.map(x=>x*.84),ink)>=4.5,colorNames[i]+' darkest texture overlay');
   }
 });
