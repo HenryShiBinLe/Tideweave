@@ -7,7 +7,7 @@
 
 ## 本机运行
 
-在 `Tideweave/` 目录下：
+在仓库根目录下：
 
 ```bash
 node server/index.mjs
@@ -45,7 +45,7 @@ sudo useradd --system --no-create-home --shell /usr/sbin/nologin tideweave
 sudo mkdir -p /opt/tideweave
 ```
 
-**3. 上传代码**（在本机 `Tideweave/` 目录下执行；同时托管网页版时把 `dist/` 也传上去）：
+**3. 上传代码**（在本机仓库根目录下执行；同时托管网页版时把 `dist/` 也传上去）：
 
 ```bash
 rsync -av --delete --exclude data/ --rsync-path="sudo rsync" server/ 用户名@服务器IP:/opt/tideweave/server/
@@ -76,7 +76,7 @@ curl -fsSL https://nodejs.org/dist/$V/SHASUMS256.txt | grep " $F\$" | sha256sum 
 tar -xzf $F -C node --strip-components=1 && rm $F && ~/opt/node/bin/node -v
 ```
 
-**2. 上传代码**（在本机 `Tideweave/` 目录下执行）：
+**2. 上传代码**（在本机仓库根目录下执行）：
 
 ```bash
 rsync -az --delete --exclude data/ --exclude logs/ server/ 服务器:tideweave/server/

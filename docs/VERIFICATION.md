@@ -8,7 +8,7 @@
 - `npm run verify:ui`：49 个小关都通过实际界面控件完成，检查 390、768、1440 宽度。
 - `node scripts/verify-interactions.mjs`：立体面拾取、展开图同步、拖动与点击区分、WebGL 回退、故障测试恢复、章节推进通过。
 - `node scripts/verify-replays.mjs`：Prim/Kruskal、增广路径、强连通缩点、Floyd 矩阵和玩家方案保护通过。
-- 历史 `node scripts/verify-desktop.mjs`：原 0.1.0 打包 EXE 的离线启动和目录迁移通过；本轮未重新执行，也没有打包最新代码。
+- 历史 `node scripts/verify-desktop.mjs`（10/21 随离线版一起移除）：原 0.1.0 打包 EXE 的离线启动和目录迁移通过；本轮未重新执行，也没有打包最新代码。
 - `node scripts/verify-pointer.mjs`：93 条线路的真实鼠标命中、03-02.2 三种合法方案和桌面/手机截图通过。
 - `node scripts/verify-local-desktop.mjs`：当前源码 Electron、规则弹窗和隔离关窗存档通过。
 - `node scripts/verify-design.mjs`：章节地图不弹目标、离线字体、程序城市像素和 45 组桌面/移动关卡布局通过；没有横向溢出或说明文字裁切。
@@ -32,7 +32,7 @@
 
 ## 仍需人工确认
 
-- 当前工作区为未提交的开发版改动；不要用旧发布包判断当前界面。入口是 `Tideweave/Start-Tideweave.cmd`。
+- 当前工作区为未提交的开发版改动；不要用旧发布包判断当前界面。入口是 `Start-Tideweave.cmd`。
 
 - 找没有学过图论的新玩家试玩，观察目标文字、难度递进、提示出现时机和是否愿意重试。
 - 最终美术替换。现在只建议制作 1 张 A01 城市远景；节点外壳和巡运标记仍可继续使用程序图形。

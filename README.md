@@ -1,32 +1,25 @@
 # 脉序 · Tideweave
 
-澜州联运区的离线图论解谜游戏。当前为 **0.1.0 可玩开发版**，覆盖最终设计表的 20 个玩法单元、49 个小关（含主线、选修与操作过渡）。本版使用原创程序城市示意与基础设施图形，尚未使用最终美术图。
+图论学习解谜游戏：在澜州联运区修复水网、路网和电网，把数据结构教材第 7 章“图”的知识点（DFS、BFS、生成树、强连通、最短路、拓扑排序、关键路径、着色、匹配等）做成可以动手的关卡。共 5 章、20 个玩法单元、49 个小关（含主线、选修与操作过渡）。
 
-## 便携版说明（当前未重新打包）
+参加「1024 学科竞赛 · Vibe Coding 创新应用大赛」的作品。
 
-发布包已按要求从当前项目的 `release/` 目录删除，本轮没有重建。以下为便携版的目标与历史使用方式，不是当前试玩入口：支持 Windows 10/11 x64，解压整个 `Tideweave-win32-x64` 文件夹后双击 `Tideweave.exe`；内含 Chromium，无需目标电脑安装 Python、Node、Edge 或 WebView2。
+## 三个版本
 
-**迁移时复制整个文件夹，不能只复制 EXE。** 正常情况下存档为 `data/progress.json`，备份为 `data/progress.json.bak`，一起复制即可续玩。请在可写目录（如用户文档、普通磁盘目录）运行。若目录不可写，将回退到系统用户目录并在设置中告知位置，迁移前通过设置导出存档。
+同一份前端（`src/`），三种外壳；进度可以通过**云同步**在三者之间互通（设置 → 开启云同步，在另一台设备上输入同步码）。
 
-游戏未做商业代码签名。Windows 可能提示未知发布者；不要通过关闭系统安全防护来绕过告警。先核对来源与 `release.json` 校验信息。其他电脑的真实硬件与驱动仍需试玩验证，不能以本机测试代替跨机认证。
+| 版本 | 运行方式 | 外壳 | 安装文件 |
+|---|---|---|---|
+| 网页版 | 浏览器打开 http://31.58.87.41:8080 | 无（`server/` 顺带托管网页） | — |
+| Windows 版 | Windows 10/11 x64，双击安装包 | Electron（`desktop/`） | `release/windows/installer/Tideweave-Setup-<版本>.exe`，备选绿色版 zip |
+| Mac 版 | Apple 芯片（M1 及以后）、macOS 13+ | Swift + WKWebView（`mac/`） | `release/mac/Tideweave-<版本>.dmg` |
 
-## 当前本地试玩
+两个桌面版都没有商业代码签名，第一次打开时系统会拦一下：
 
-本轮修改只更新本地源码和开发用 `dist/`，没有重建发布包。请在本目录双击 `Start-Tideweave.cmd`，或在 PowerShell 运行 `npm start`；两个入口都会先编译最新源码，再启动开发版 Electron。此前另存的旧发布包不包含本轮界面和交互修复。
+- **Windows**：提示“Windows 已保护你的电脑”时，点“更多信息 → 仍要运行”。
+- **Mac**：提示无法验证开发者时点“完成”，再到“系统设置 → 隐私与安全性”点“仍要打开”。镜像里附有《首次打开说明》。
 
-开发版存档位于本目录 `data/`，与旧发布包的存档分开。主菜单的“开始游戏 / 继续游戏”直接进入当前进度；“章节选择”用于浏览主线路线与本章选修。选择关卡后先看目标，再按“进入关卡”。关卡页显示目标和基本操作，补充条件在底部“完整规则”查看。
-
-2026-10-17 玩法修订保留 49 个关卡 ID，替换了重复地图并强化中后期规划。旧版已通关与徽记会保留，改变题目的编辑方案会重置；选关页标明“旧版已通关”，完成新版后记录新版方案。旧成绩不会被当成新题答案，回放会说明当前展示的是新版参考方案。详见 `GAMEPLAY_CHANGES.md`。
-
-## Mac 原生版（Swift + WKWebView）
-
-`mac/` 是 Mac 专用的原生外壳：AppKit 窗口和菜单 + 系统自带的 WKWebView，加载同一份 `dist/` 前端，不打包 Chromium（App 约 50 MB）。它向页面提供与 Electron 版相同的 `window.tideweave` 接口（退出、导出导入、关窗前存档），并带 `sync: true`：存档照网页版存在网页存储里，**开启云同步**。网页本身不能联网，`/api/` 请求由壳代理到同步服务（默认 `http://31.58.87.41:8080`，见 `mac/Info.plist` 的 `TideweaveSyncServer`，可用 `defaults write local.tideweave.mac SyncServer <地址>` 改）。
-
-- 构建：在本目录运行 `npm run package:mac`（只需 Xcode 命令行工具，不需要完整 Xcode），产物为 `release/mac/Tideweave.app`；`npm run start:mac` 构建后直接打开。已有最新 `dist/` 时可用 `SKIP_WEB_BUILD=1 bash mac/build.sh` 跳过前端编译。
-- 存档：在 App 的网页存储里（`~/Library/WebKit/local.tideweave.mac`），与网页版同一套同步码；不写进 App 包，重新构建不会丢档。早期版本留在 `~/Library/Application Support/Tideweave/progress.json` 的进度会在首次启动时自动迁入。
-- 习惯：⌘Q / ⌘W 退出前先存档并尽量推送云端（最多等 3 秒）；⌘Z 撤销、⌃⌘F 全屏；标题栏自动跟随页面顶部颜色。
-- 签名：仅 ad-hoc 签名、未公证，适合自用；拷到别的 Mac 首次打开需右键“打开”。
-- 调试：`defaults write local.tideweave.mac WebInspector -bool true` 后可用 Safari 网页检查器。
+存档都在本机，删除或重装游戏不会丢进度。Windows 版装在 `%LOCALAPPDATA%\Programs\Tideweave`，进度在其中的 `data\`；Mac 版在 App 的网页存储里。
 
 ## 玩法
 
@@ -38,57 +31,54 @@
 - 完成任务后可在“筹算回放”查看过程；最短路、Prim/Kruskal、Floyd、强连通缩点和匹配增广会显示关键中间步骤；章末点明本章规律。
 - 立体着色依次使用四面体操作入门、七面五棱柱、十四面截角八面体，全由 Three.js 程序生成，无模型文件。展开图按真实共享棱展开，保留配对棱号；WebGL 不可用时回退到同数据展开图。
 - 部分后期配色关明确限制最多颜色数，最少色数仍作为徽记挑战。不能通过无限增加颜色绕过全部规划。
-- UI 使用石墨、雾白、水青、稻黄、赭金与朱红的语义配色。独立主菜单、主线与选修切换、任务预览和出发按钮分工明确；场景与标识保持现代东方水利工程的原创表达。
-- 主界面标题下明确标注“图论学习游戏”。关卡界面使用雾白标题与目标区、浅灰绿棋盘和炭黑操作栏，以少量暖橙突出“运行检查”，不再使用黄色上下边框；小圆角、切角、圆形工具键和胶囊开关按功能区分。页面切换、选章、选关和弹窗有短暂入场动效；连续编辑棋盘不会反复播放。设置与系统的减少动态效果选项均生效。
+- 背景音乐和点击、通关、徽记音效全部离线，设置里可分别调节主音量、音效和音乐；窗口最小化时音乐暂停。
 
-键盘支持 Tab/Enter/空格操作、Ctrl+Z 撤销、Ctrl+Shift+Z 重做、1–6 色样或分组选择。立体画布使用方向键旋转，面选择菜单及“着色”按钮提供不依赖鼠标的操作。
+键盘支持 Tab/Enter/空格操作、Ctrl+Z（Mac 上 ⌘Z）撤销、Ctrl+Shift+Z 重做、1–6 色样或分组选择。立体画布使用方向键旋转，面选择菜单及“着色”按钮提供不依赖鼠标的操作。
 
-## 开发与构建
+2026-10-17 玩法修订保留 49 个关卡 ID，替换了重复地图并强化中后期规划；旧存档的兼容方式见 [docs/GAMEPLAY_CHANGES.md](docs/GAMEPLAY_CHANGES.md)。
 
-开发机需要 Node 22+（当前在 Node 24 验证）。
+## 开发
 
-从仓库根目录进入 `Tideweave/` 后运行以下命令。首次安装开发依赖需要联网，游戏运行本身离线；已有依赖的本地目录可直接运行 `npm start`。
+需要 Node 22+。首次安装依赖需要联网，游戏运行本身离线。
 
-```powershell
+```bash
 npm ci
-npm test
-npm run build
-npm start
-npm run verify:ui
-node scripts/verify-pointer.mjs
-node scripts/verify-design.mjs
-node scripts/verify-chapters.mjs
-node scripts/verify-interactions.mjs
-node scripts/verify-replays.mjs
-node scripts/verify-local-desktop.mjs
-node scripts/verify-overhaul.mjs
-node scripts/verify-interface.mjs
+npm test            # 规则、存档、云同步、桌面外壳等单元测试
+npm run build       # 构建前端到 dist/
+npm start           # 用本机 Electron 运行 Windows 版外壳（Mac 上也能跑）
+npm run preview     # 本机 HTTP 预览网页版
 ```
 
-发布打包与远程上传仅在用户明确要求时执行，本次源码上传不生成发布包。`npm run preview` 仅用于开发检查，会启动本机随机端口 HTTP 服务，实际桌面游戏不依赖该服务。已有依赖时无需重复安装。
+各平台的打包与部署：
 
-离线标题字体已包含在 `assets/fonts/` 中，正常构建不需要原字体或 Python。只有增加标题用字、需要重新裁剪字体时，才需安装 `fonttools` 和 `brotli`，并运行 `python scripts/subset-display-font.py "原始思源宋体粗体.otf的路径"`；再运行 `npm run build`。
+| 目标 | 命令 | 说明 |
+|---|---|---|
+| Windows 程序目录 | `npm run package` | 产物在 `release/windows/Tideweave-win32-x64/`；Mac 上也能打 |
+| Windows 安装包 | 在 Windows 上用 Inno Setup 编译 `desktop/installer/Tideweave.iss` | 见 [desktop/README.md](desktop/README.md) |
+| Mac App / 安装镜像 | `npm run package:mac` / `npm run dmg:mac` | 只需 Xcode 命令行工具 |
+| 云同步服务 + 网页版 | 见 [server/README.md](server/README.md) | |
 
-## 结构
+UI 验证脚本（Playwright）：`npm run verify:ui`，以及 `scripts/verify-*.mjs`。
 
-- `src/levels.mjs`：关卡、前置、目标、提示和章末知识。
-- `src/refinements.mjs`：当前玩法修订；旧题快照用于兼容既有存档。
-- `src/briefs.mjs`：从实际关卡参数生成白话目标、操作、可选规则与先解释后命名的知识总结。
-- `src/engine.mjs`、`algorithms.mjs`：规则判定与算法。
-- `src/main.mjs`、`game.css`：当前 UI 入口与样式。
-- `src/ui-motion.mjs`：界面入场动效、导航焦点与横向章节滚动位置保护。
-- `src/board.mjs`、`solids.mjs`、`solid-view.mjs`：二维棋盘与共享面数据。
-- `src/solid-nets.mjs`：按真实棱生成不重叠的多面体展开图。
-- `src/session.mjs`、`progress.mjs`：历史栈、进度与提示。
-- `desktop/`：安全桌面壳、原子存档、导入导出。
-- `mac/`：Mac 原生壳（Swift / AppKit / WKWebView）与构建脚本，接口与 `desktop/` 一致。
-- `tests/`、`scripts/verify-ui.mjs`：规则及逐关 UI 验证。
-- `assets/`：替换素材目录；详见 `ASSETS_NEEDED.md`。
+离线标题字体已包含在 `assets/fonts/` 中，正常构建不需要原字体或 Python。只有增加标题用字、需要重新裁剪字体时，才需安装 `fonttools` 和 `brotli`，运行 `python scripts/subset-display-font.py "原始思源宋体粗体.otf的路径"` 后再 `npm run build`。
 
-当前还应继续做新玩家难度试玩、最终美术替换和跨电脑兼容验证。自动测试不等于游戏体验已经达到成品质量。当前回放是可玩的过程说明，不等于完整的算法课程或代码级演示。
+## 目录
 
-## Git / 发布
+| 路径 | 内容 |
+|---|---|
+| `src/` | 前端：关卡与规则（`levels.mjs`、`engine.mjs`、`algorithms.mjs`）、界面（`main.mjs`、`game.css`）、存档（`progress.mjs`）、音频（`audio.mjs`）、云同步层（`sync/`） |
+| `assets/` | 素材：场景、设施、纹理、字体、音频；清单见 [docs/ASSETS_NEEDED.md](docs/ASSETS_NEEDED.md) |
+| `server/` | 云同步服务端，同时托管网页版 |
+| `desktop/` | Windows 版：Electron 外壳、打包脚本、安装包脚本（`installer/`）、虚拟机安装测试（`vm-test/`） |
+| `mac/` | Mac 版：Swift 外壳、构建与安装镜像脚本 |
+| `scripts/` | 构建、预览、UI 验证、音频制作等脚本 |
+| `tests/` | 单元测试 |
+| `docs/` | 文档：云同步方案与协作约定、玩法修订记录、验证记录、素材清单 |
+| `archive/` | 早期原型：`test0/`（LINK · 关系实验室，纯网页）、`test1/`（图论夜校 · GraphLab，Python + PyInstaller）。保留作开发过程记录，不再维护 |
 
-仓库为 `https://github.com/HenryShiBinLe/vibe1024`，默认分支为 `main`。本游戏位于仓库根下的 `Tideweave/`，与 `test0/`、`test1/` 同级；`Tideweave/package.json` 即项目入口，不额外嵌套一层游戏文件夹。
+构建产物 `dist/`、`release/` 和运行时存档 `data/` 不入库。
 
-本地 Git 仓库位于游戏目录上一级，已接入同一远程历史，可直接在 `Tideweave/` 内继续修改。提交时只暂存本项目路径，保留 `test0/`、`test1/` 不变。未经用户明确指示不进行后续提交、推送、PR 或 release 上传。不得将密钥、`data/`、`node_modules/`、`work/`、`verification/` 或构建目录加入源码提交。
+## 说明
+
+- 第三方组件与许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+- 自动测试不等于游戏体验已经达到成品质量。还应继续做新玩家难度试玩、最终美术替换和跨电脑兼容验证；回放是可玩的过程说明，不等于完整的算法课程或代码级演示。

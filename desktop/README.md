@@ -1,40 +1,37 @@
-# Windows 同步版外壳（win/）
+# Windows 版（desktop/）
 
-带云同步的 Windows 版。队友的离线版（`desktop/`、`scripts/package.mjs`、`npm run package`）原样保留，两个版本互不影响。做法与 Mac 版（`mac/`）一致。
+Electron 外壳，加载同一份 `dist/` 前端，带云同步，做法与 Mac 版（`mac/`）一致：
 
-## 和离线版的区别
+- **页面地址**：`tideweave://app/index.html`（自定义协议，见 `protocol.cjs`）。不用 `file://`，因为 `file://` 页面的源是 null，同源请求和 CSP 的 `'self'` 都对不上。
+- **云同步**：`/api/` 请求由主进程转发给同步服务，对网页来说是同源请求。网页本身不能联网，http/https/ws 请求全部拦截。
+- **存档**：在 exe 旁边的 `data/runtime/`（网页存储，与网页版、Mac 版是同一套同步层）。整个文件夹拷走仍可带走进度。
+- **旧存档**：早期离线版把进度存在 `data/progress.json`。第一次启动时迁移进网页存储，只做一次；网页存储已有进度就不动。
+- **其余**：单实例、窗口大小、权限全部拒绝、导出导入、关窗前存档确认、最小化时暂停音乐。存档格式检查在 `storage.cjs`。
 
-| | 离线版（desktop/） | 同步版（win/） |
-|---|---|---|
-| 页面地址 | `file://…/dist/index.html` | `tideweave://app/index.html`（自定义协议，见 `protocol.cjs`） |
-| 云同步 | 无 | 有。`/api/` 请求由主进程转发给同步服务，对网页来说是同源请求 |
-| 网页能否联网 | 不能（拦截 http/https/ws） | 同样不能，拦截规则不变；同步只走主进程转发 |
-| 存档 | exe 旁边的 `data/progress.json` | exe 旁边的 `data/runtime/`（网页存储，与网页版、Mac 版同一套同步层）；整个文件夹拷走仍可带走进度 |
-| 旧存档 | — | 第一次启动时把 `data/progress.json` 迁移进网页存储（只做一次；网页存储已有进度就不动） |
-
-其余（单实例、窗口大小、权限全部拒绝、导出导入、关窗前存档确认、最小化时暂停音乐）都照离线版的做法。存档的格式检查复用 `desktop/storage.cjs`。
+10/21 之前仓库里有两个 Windows 外壳：@aliezXDD 的离线版（`desktop/`，不联网，存档写 `progress.json`）和我们的同步版（`win/`）。当天合并成了这一个，离线版去掉。
 
 ## 文件
 
 - `main.cjs`：主进程。
-- `preload.cjs`：与离线版相同的 `window.tideweave` 接口，外加 `sync: true` 和旧存档迁移。
-- `protocol.cjs`：`tideweave://app/` 的处理逻辑：读 `dist/`（支持 Range，音频要用）、防目录穿越、转发 `/api/`。不依赖 Electron，测试见 `tests/win-shell.test.mjs`。
+- `preload.cjs`：向页面提供 `window.tideweave` 接口（与 Mac 版一致），带 `sync: true`，负责旧存档迁移。
+- `protocol.cjs`：`tideweave://app/` 的处理逻辑：读 `dist/`（支持 Range，音频要用）、防目录穿越、转发 `/api/`。不依赖 Electron，测试见 `tests/desktop-shell.test.mjs`。
+- `storage.cjs`：存档格式检查和原子写入（迁移、导出导入用）。
 - `config.cjs`：默认同步服务地址 `http://31.58.87.41:8080`。测试时可用环境变量 `TIDEWEAVE_SYNC_SERVER` 临时改，设为空字符串则不联网。
 - `package.mjs`：打包脚本（程序目录）。
-- `installer.iss`：安装包脚本（Inno Setup 6）。`ChineseSimplified.isl` 是它用的简体中文界面文字（来源见脚本注释）。
+- `installer/Tideweave.iss`：安装包脚本（Inno Setup 6）。同目录的 `ChineseSimplified.isl` 是它用的简体中文界面文字（来源见脚本注释）。
 - `Tideweave.ico`：exe、安装包、快捷方式的图标，由 `make-icon.py` 从 Mac 版图标生成。
 - `vm-test/`：在 Windows 虚拟机里跑的安装包全流程测试。
 
 ## 本机运行和打包
 
 ```bash
-npm run start:win-sync     # 构建后用本机 Electron 运行同步版（Mac 上也能跑，便于调试）
-npm run package:win-sync   # 打包到 release/win-sync/Tideweave-win32-x64/Tideweave.exe
+npm start          # 构建后用本机 Electron 运行（Mac 上也能跑，便于调试）
+npm run package    # 打包到 release/windows/Tideweave-win32-x64/Tideweave.exe
 ```
 
-- 打包用 Node 22（脚本里已写成 `npx -y node@22`）。Node 24.16 起有个流的回归（nodejs/node#62557），packager 解压 Electron 用的 extract-zip 2.0.1 → yauzl 2.x 会在解压途中永远停住、进程静默退出（10/21 实测 Node 26.3 会卡住，Node 22.23 正常）。在受影响的 Node 上直接运行 `win/package.mjs` 会报错说明原因。
+- 打包用 Node 22（脚本里已写成 `npx -y node@22`）。Node 24.16 起有个流的回归（nodejs/node#62557），packager 解压 Electron 用的 extract-zip 2.0.1 → yauzl 2.x 会在解压途中永远停住、进程静默退出（10/21 实测 Node 26.3 会卡住，Node 22.23 正常）。在受影响的 Node 上直接运行 `desktop/package.mjs` 会报错说明原因。
 - Mac 上也能打 Windows 包：packager 会下载同版本的 win32-x64 Electron（缓存在本机），写 exe 文件信息用的是纯 JS 的 resedit，不需要 Wine。
-- 发布目录里有 `data/`（玩家存档）时拒绝覆盖，规矩和离线版脚本一样。
+- 发布目录里有 `data/`（玩家存档）时拒绝覆盖。
 
 ## 安装包
 
@@ -51,16 +48,16 @@ npm run package:win-sync   # 打包到 release/win-sync/Tideweave-win32-x64/Tide
 
 安装包要在 Windows 上编译，本机用 Parallels 里的 Windows 11 虚拟机（共享文件夹 `Z:` = Mac 的用户目录）。
 
-1. Mac 上：`npm run package:win-sync`，得到 `release/win-sync/Tideweave-win32-x64/`。
+1. Mac 上：`npm run package`，得到 `release/windows/Tideweave-win32-x64/`。
 2. 虚拟机里装 Inno Setup 6（10/21 装的是 6.7.3）。安装程序来自官方 GitHub 发布页，数字签名为 Pyrsys B.V.（Inno Setup 维护者的公司），按当前用户安装：`innosetup-6.7.3.exe /VERYSILENT /CURRENTUSER`。
 3. 虚拟机里编译：
 
 ```bat
-"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" /DSourceDir=Z:\vibe1024\Tideweave\release\win-sync\Tideweave-win32-x64 /DOutputDir=Z:\vibe1024\Tideweave\release\win-sync\installer /DAppVersion=0.1.0 Z:\vibe1024\Tideweave\win\installer.iss
+"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" /DSourceDir=Z:\vibe1024\release\windows\Tideweave-win32-x64 /DOutputDir=Z:\vibe1024\release\windows\installer /DAppVersion=0.1.0 Z:\vibe1024\desktop\installer\Tideweave.iss
 ```
 
-4. 绿色版：Mac 上在 `release/win-sync/` 下 `zip -r -X -9 installer/Tideweave-Portable-<版本>.zip Tideweave-win32-x64`。打包前确认目录里没有 `data/`。
-5. 测试：虚拟机里以当前用户运行 `powershell -ExecutionPolicy Bypass -File Z:\vibe1024\Tideweave\win\vm-test\install-test.ps1`。
+4. 绿色版：Mac 上在 `release/windows/` 下 `zip -r -X -9 installer/Tideweave-Portable-<版本>.zip Tideweave-win32-x64`。打包前确认目录里没有 `data/`。
+5. 测试：虚拟机里以当前用户运行 `powershell -ExecutionPolicy Bypass -File Z:\vibe1024\desktop\vm-test\install-test.ps1`。
 
 ### 安装包验证记录
 
@@ -73,12 +70,12 @@ npm run package:win-sync   # 打包到 release/win-sync/Tideweave-win32-x64/Tide
 - 修过的两个问题：
   - 第一版游戏开着时卸载，会留下删不掉的 exe、dll、app.asar，因为 Inno 的卸载程序不会去关正在运行的程序；
   - 第一版游戏开着时升级失败、回滚（退出码 5）。重启管理器同时发现了系统服务 XtaCache（ARM 版 Windows 转译 x64 程序的缓存），没有权限关它，就整个放弃了，替换 `d3dcompiler_47.dll` 时“拒绝访问”。
-  - 两个都改成了安装或卸载之前先自己关掉游戏（`installer.iss` 的 `[Code]`）。
+  - 两个都改成了安装或卸载之前先自己关掉游戏（`installer/Tideweave.iss` 的 `[Code]`）。
 - 没测：安装向导的图形界面。测试时虚拟机停在锁屏，向导是用静默参数跑的，向导里的文字和页面还要人工看一遍。
 
 ## 验证记录（程序本身）
 
-- 10/21 Mac 上用本机 Electron 跑冒烟测试，Windows 11（Parallels 虚拟机）上跑打包好的 exe，两边测试项相同，全部通过：
+- 10/21（合并外壳之前，当时在 `win/`）Mac 上用本机 Electron 跑冒烟测试，Windows 11（Parallels 虚拟机）上跑打包好的 exe，两边测试项相同，全部通过：
   - 页面地址是 `tideweave://app/index.html`，`sync` 为 true；
   - 旧存档迁移（主音量 0.37 作记号）；
   - 网页直连同步服务被拦截，同源 `/api/` 转发成功；
@@ -88,4 +85,5 @@ npm run package:win-sync   # 打包到 release/win-sync/Tideweave-win32-x64/Tide
 - 第一次测试时虚拟机连的是 Mac 上的测试同步服务（`TIDEWEAVE_SYNC_SERVER`）。Mac 上的网页版用 exe 生成的同步码接上了，状态“已同步”；服务端日志里两边的请求都在。
 - 控制台里有一条 `GET /api/v1/save 404`：开启同步时先拉取云端，新同步码在云端还不存在，拿到 404 后再创建（`src/sync/sync.mjs` 的设计）。网页版也一样，不是错误。
 - 10/21 19:13 用默认的线上同步服务（`http://31.58.87.41:8080`，不设环境变量）在虚拟机里再测一次，测试项同上，全部通过。同源转发到美国 VPS 的健康检查用时 583 ms；开启同步后状态为“已同步”。线上服务端用 `admin.mjs list` 查到这个测试码的版本 1，保存时间和 exe 显示的一致；日志里的请求顺序是“查询 404 → 创建 → 拉取”。这个测试码（THZN-3X7Z-GBTT，空进度）留在了线上，服务端没有删除命令。
+- 10/21 合并外壳后：`scripts/verify-local-desktop.mjs` 在 Mac 上通过（资源加载、立体关渲染、规则弹窗、关窗存档后重开进度还在）。`scripts/verify-audio.mjs` 在 Mac 上停在“道路编辑恰好一次点击音”这一步（实际 1 次、期望 2 次）。合并前的原始代码在 Mac 上同样停在这里，不是合并引起的；这个脚本是在 Windows 上写的，Windows 上没有重跑。
 - 没测：在真实 Windows 电脑上的声音听感，以及开着同步时断网、恢复的情况。断网、恢复的逻辑是同步层共用的，有单元测试覆盖。
