@@ -1,4 +1,4 @@
-// 安装测试用的探针（由 win/vm-test/install-test.ps1 调用）。用装好的 exe 自带的 Node 运行：
+// 安装测试用的探针（由 desktop/vm-test/install-test.ps1 调用）。用装好的 exe 自带的 Node 运行：
 //   set ELECTRON_RUN_AS_NODE=1 && Tideweave.exe probe.cjs <exe 目录> <set|get|launch> <记号> <结果文件>
 //   set：启动游戏，在网页存储里写记号，走前端退出流程
 //   get：启动游戏，读记号和基本状态，走前端退出流程

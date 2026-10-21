@@ -1,11 +1,11 @@
-// Windows 同步版 · 自定义协议 tideweave://app/ 的处理逻辑（与 Mac 版 mac/Sources/BundleSchemeHandler.swift 对应）
+// Windows 版 · 自定义协议 tideweave://app/ 的处理逻辑（与 Mac 版 mac/Sources/BundleSchemeHandler.swift 对应）
 //
 // 为什么不用 file://：file:// 页面的源是 null，同步层要发同源请求、CSP 的 'self' 也对不上。
 // 改用 tideweave://app/ 后：
 //   - 普通路径从打包进来的 dist/ 读文件；音频等二进制文件支持 Range（206），<audio> 可以按段读取；
 //   - /api/ 开头的请求由主进程转发给同步服务。对网页来说仍是同源请求，CSP 和服务端跨域设置都不用改；
-//     网页本身仍然连不了任何外网地址（main.cjs 照旧拦截 http/https/ws）。
-// 这里只用标准的 Request / Response / fetch，不依赖 Electron，方便在 Node 里测试（tests/win-shell.test.mjs）。
+//     网页本身仍然连不了任何外网地址（main.cjs 拦截 http/https/ws）。
+// 这里只用标准的 Request / Response / fetch，不依赖 Electron，方便在 Node 里测试（tests/desktop-shell.test.mjs）。
 const fs = require("node:fs/promises");
 const path = require("node:path");
 

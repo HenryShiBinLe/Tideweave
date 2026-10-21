@@ -17,7 +17,7 @@ const availableAssets=typeof __ASSET_FILES__==='undefined'?[]:__ASSET_FILES__;
 const loadedAssets=Object.fromEntries(availableAssets.map(id=>[id,assetManifest[id].path]));
 const app = document.querySelector("#app");
 const sessionCache=new Map();
-// 云同步：网页版读档、存档都经过同步层（见 docs/协作约定-存档与云同步.md 第六部分）；桌面版不创建，保持离线
+// 云同步：网页版、Mac 版、Windows 版读档、存档都经过同步层（见 docs/协作约定-存档与云同步.md 第六部分）
 // 浏览器禁用站点数据时访问 localStorage 会抛错：这时不启用同步，游戏照原样运行（只是存不了档）
 const sync=(()=>{try{return syncAvailable()?createSync():null;}catch{return null;}})();
 const st = { screen: "home", chapter: 1, levelId: null, progress: fresh(), session: null, modal: null, player: null, timer: null, solid: null, net: false, tool: 0, target: 0, fault: "mark", probe: null, adjacency: false, speed: 1, saveMeta: {}, campaignTab:'main', selectedMission:null };
@@ -59,7 +59,7 @@ function save() {
   const data = structuredClone(st.progress);
   saveQueue = saveQueue.then(async () => {
     try {
-      if (sync) sync.save(data); // 照旧先写本机 localStorage，再由同步层在后台推送（网页版、Mac 版）
+      if (sync) sync.save(data); // 照旧先写本机 localStorage，再由同步层在后台推送（网页版、Mac 版、Windows 版）
       else if (window.tideweave) await window.tideweave.save(data);
       else localStorage.setItem("tideweave-progress", JSON.stringify(data));
       st.saveFailed=false;

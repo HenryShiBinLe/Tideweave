@@ -10,13 +10,11 @@
     "start": "npm run build && electron .",
     "preview": "node scripts/preview.mjs",
     "test": "node --test tests/*.test.mjs",
-    "package": "npm run build && node scripts/package.mjs",
+    "package": "npx -y node@22 desktop/package.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
     "package:mac": "bash mac/build.sh",
     "start:mac": "bash mac/build.sh --run",
-    "dmg:mac": "bash mac/make-dmg.sh",
-    "package:win-sync": "npx -y node@22 win/package.mjs",
-    "start:win-sync": "npm run build && electron win/main.cjs"
+    "dmg:mac": "bash mac/make-dmg.sh"
   },
   "dependencies": {
     "graphology": "^0.26.0",

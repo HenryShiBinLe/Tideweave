@@ -4,23 +4,31 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
 import {levels,levelById} from '../src/levels.mjs';
 import {assetManifest} from '../src/assets.mjs';
 import {fresh,recordAttempt} from '../src/progress.mjs';
 import {solution,evaluate} from '../src/engine.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const electronPath=createRequire(import.meta.url)('electron');
+// 桌面版按网页版的方式把进度存在网页存储里（desktop/main.cjs）
+const readSave=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('tideweave-progress')));
 await fs.mkdir(path.join(root,'work'),{recursive:true});
 const fixture=await fs.mkdtemp(path.join(root,'work','local-check-'));
 // Test the current source shell with an isolated save, never the player's data or release.
 for(const name of ['desktop','dist','package.json'])await fs.cp(path.join(root,name),path.join(fixture,name),{recursive:true});
-const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
+// 测试不连同步服务
+const env={...process.env,TIDEWEAVE_SYNC_SERVER:''};delete env.ELECTRON_RUN_AS_NODE;
+// Windows 上关掉 GPU 仍有软件渲染的 WebGL；Mac 上关掉 GPU 后立体关的 WebGL 起不来，所以只在 Windows 上关
+const gpuArgs=process.platform==='win32'?['--disable-gpu']:[];
+const launch=()=>electron.launch({executablePath:electronPath,cwd:fixture,env,args:[fixture,...gpuArgs]});
 let app;
 try{
-  app=await electron.launch({executablePath:path.join(root,'node_modules/electron/dist/electron.exe'),cwd:fixture,env,args:[fixture,'--disable-gpu']});
+  app=await launch();
   const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.waitForSelector('[data-action="resume"]');
-  assert.match(page.url(),/^file:/);
+  assert.match(page.url(),/^tideweave:\/\/app\//);
   await page.evaluate(async()=>{await Promise.allSettled(document.getAnimations().filter(a=>a.effect.getTiming().iterations!==Infinity).map(a=>a.finished));});
   for(const action of ['settings','quit']){
     const button=page.locator(`.tw-home-options [data-action="${action}"]`);
@@ -63,18 +71,21 @@ try{
   const seed=fresh();seed.settings.motion=false;
   for(const level of levels){const state=solution(level);recordAttempt(seed,level,state,evaluate(level,state));delete seed.records[level.id].state;}
   seed.records['01-01.1'].state={...solution(levelById['01-01.1']),selected:[0]};
-  await page.evaluate(async data=>window.tideweave.save(data),seed);await page.reload();
+  await page.evaluate(data=>localStorage.setItem('tideweave-progress',JSON.stringify(data)),seed);await page.reload();
   await uiClick(page,'[data-level="04-02.3"]');
   await page.waitForFunction(()=>document.querySelector('#tw-solid canvas')?.dataset.surface==='loaded');
   assert.ok(await page.locator('#tw-solid canvas').evaluate(canvas=>{
     const copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
     const ctx=copy.getContext('2d');ctx.drawImage(canvas,0,0);
     return ctx.getImageData(0,0,copy.width,copy.height).data.some((v,i)=>i%4===3&&v>0);
-  }),'textured solid renders offline through file protocol');
+  }),'textured solid renders offline through the app protocol');
   await page.screenshot({path:path.join(root,'verification/local-desktop-solid.png')});
   const closed=app.waitForEvent('close');await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].close());await closed;app=null;
-  const save=JSON.parse(await fs.readFile(path.join(fixture,'data/progress.json'),'utf8'));
+  // 关窗前存的档，重新打开后还在
+  app=await launch();const reopened=await app.firstWindow();await reopened.waitForSelector('[data-action="resume"]');
+  const save=await readSave(reopened);
+  const reclosed=app.waitForEvent('close');await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].close());await reclosed;app=null;
   assert.deepEqual(save.records['01-01.1'].state.selected,[0]);assert.deepEqual(save.briefings,[]);assert.deepEqual(errors,[]);
-  await fs.writeFile(path.join(root,'verification/local-desktop-results.json'),JSON.stringify({pass:true,fileProtocol:true,currentSource:true,isolatedSave:true,closeSave:true,decoded,solidTexture:true,runtime,errors},null,2));
-  console.log(`Local Electron passed: ${decoded} file-protocol assets, textured solid, rules dialog, isolated close-save.`);
+  await fs.writeFile(path.join(root,'verification/local-desktop-results.json'),JSON.stringify({pass:true,appProtocol:true,currentSource:true,isolatedSave:true,closeSave:true,decoded,solidTexture:true,runtime,errors},null,2));
+  console.log(`Local Electron passed: ${decoded} app-protocol assets, textured solid, rules dialog, isolated close-save.`);
 }finally{if(app)await app.close();}

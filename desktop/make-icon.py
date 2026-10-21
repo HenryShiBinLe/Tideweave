@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""生成 Windows 版图标 win/Tideweave.ico（exe、安装包、快捷方式共用）。
+"""生成 Windows 版图标 desktop/Tideweave.ico（exe、安装包、快捷方式共用）。
 
 来源是 Mac 版的图标（mac/make-icon.swift 用游戏里的「枢纽」节点图画的，在 mac/build/AppIcon.iconset/ 里，
 先跑一次 npm run package:mac 生成）。Mac 图标按 macOS 规范四周留了约 10% 透明边（1024 画布里主体 824），
 Windows 图标习惯铺满画布，所以先裁掉透明边再缩放。生成的 .ico 已提交，Windows 上打包不需要再跑这个脚本。
 
-用法：python3 win/make-icon.py      依赖 Pillow
+用法：python3 desktop/make-icon.py      依赖 Pillow
 """
 from pathlib import Path
 

@@ -1,8 +1,8 @@
-﻿# 安装包全流程测试（按当前用户运行，不需要管理员）。路径按 Parallels 共享文件夹 Z:（= Mac 的用户目录）写的，见 win/README.md。
+﻿# 安装包全流程测试（按当前用户运行，不需要管理员）。路径按 Parallels 共享文件夹 Z:（= Mac 的用户目录）写的，见 desktop/README.md。
 #   安装 → 启动写记号 A → 游戏开着时写记号 B 并覆盖安装 → 读记号 → 游戏开着时写记号 C 并卸载 → 重装读记号
 $ErrorActionPreference = 'Continue'
-$setup = 'Z:\vibe1024\Tideweave\release\win-sync\installer\Tideweave-Setup-0.1.0.exe'
-$probe = 'Z:\vibe1024\Tideweave\win\vm-test\probe.cjs'
+$setup = 'Z:\vibe1024\release\windows\installer\Tideweave-Setup-0.1.0.exe'
+$probe = 'Z:\vibe1024\desktop\vm-test\probe.cjs'
 $app = Join-Path $env:LOCALAPPDATA 'Programs\Tideweave'
 $exe = Join-Path $app 'Tideweave.exe'
 $menu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\脉序 · Tideweave.lnk'

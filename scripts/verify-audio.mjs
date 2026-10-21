@@ -24,11 +24,14 @@ progress.last = '01-01.1';
 progress.records['01-01.1'].state = initialState(levelById['01-01.1']);
 await fs.mkdir(path.join(fixture, 'data'), {recursive: true});
 await fs.writeFile(path.join(fixture, 'data/progress.json'), JSON.stringify(progress));
-const env = {...process.env}; delete env.ELECTRON_RUN_AS_NODE;
+const env = {...process.env, TIDEWEAVE_SYNC_SERVER: ''}; delete env.ELECTRON_RUN_AS_NODE; // 测试不连同步服务
+// Windows 上关掉 GPU 仍有软件渲染的 WebGL；Mac 上关掉 GPU 后 WebGL 起不来，所以只在 Windows 上关
+const gpuArgs = process.platform === 'win32' ? ['--disable-gpu'] : [];
 let app;
 const report = {fixture, errors: []};
 try {
-  app = await electron.launch({executablePath: path.join(root, 'node_modules/electron/dist/electron.exe'), cwd: fixture, env, args: [fixture, '--disable-gpu']});
+  // 预先写好的 data/progress.json 会在首次启动时迁移进网页存储（desktop/main.cjs）
+  app = await electron.launch({executablePath: require('electron'), cwd: fixture, env, args: [fixture, ...gpuArgs]});
   const page = await app.firstWindow();
   page.setDefaultTimeout(15000);
   page.on('pageerror', error => report.errors.push(error.message));
@@ -72,7 +75,7 @@ try {
   await page.reload();
   console.log('Reloaded isolated desktop with media instrumentation.');
   await page.waitForSelector('[data-action="resume"]');
-  assert.match(page.url(), /^file:/);
+  assert.match(page.url(), /^tideweave:\/\/app\//);
   await page.locator('[data-action="campaign"]').click();
   await page.waitForFunction(() => window.__audio.length === 5 && window.__audio.every(media => media.readyState >= 2));
   await page.waitForFunction(() => window.__audio[0].currentTime > .5 && window.__audio[0].volume > 0);
@@ -208,7 +211,8 @@ try {
 
   await page.locator('[data-action="settings"]').click();
   await page.locator('[data-setting="sound"]').uncheck();
-  await page.waitForFunction(async () => (await window.tideweave.load()).data.settings.sound === false);
+  // 桌面版按网页版的方式把进度存在网页存储里
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('tideweave-progress')).settings.sound === false);
   await page.reload();
   await page.waitForSelector('[data-action="resume"]');
   assert.ok(await page.evaluate(() => window.__audio.every(media => media.paused)));

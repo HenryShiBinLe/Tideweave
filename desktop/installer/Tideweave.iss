@@ -1,7 +1,7 @@
-﻿; 脉序 · Tideweave（Windows 同步版）安装包，用 Inno Setup 6 编译，产物是 Tideweave-Setup-<版本>.exe。
+﻿; 脉序 · Tideweave（Windows 版）安装包，用 Inno Setup 6 编译，产物是 Tideweave-Setup-<版本>.exe。
 ;
-; 编译（在 Windows 上，先用 npm run package:win-sync 打出 release\win-sync\Tideweave-win32-x64\）：
-;   ISCC.exe /DSourceDir=<Tideweave-win32-x64 目录> /DOutputDir=<输出目录> /DAppVersion=<版本> win\installer.iss
+; 编译（在 Windows 上，先用 npm run package 打出 release\windows\Tideweave-win32-x64\）：
+;   ISCC.exe /DSourceDir=<Tideweave-win32-x64 目录> /DOutputDir=<输出目录> /DAppVersion=<版本> desktop\installer\Tideweave.iss
 ;
 ; 设计：
 ;   - 按当前用户安装到 %LOCALAPPDATA%\Programs\Tideweave，不需要管理员权限，不弹权限确认；
@@ -39,7 +39,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 WizardStyle=modern
-SetupIconFile=Tideweave.ico
+SetupIconFile=..\Tideweave.ico
 UninstallDisplayIcon={app}\Tideweave.exe
 UninstallDisplayName=脉序 · Tideweave
 CloseApplications=yes

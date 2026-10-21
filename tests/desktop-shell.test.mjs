@@ -1,4 +1,4 @@
-// Windows 同步版外壳：自定义协议 tideweave://app/ 的读文件、Range、防穿越，以及 /api/ 转发给同步服务
+// Windows 版外壳（desktop/）：自定义协议 tideweave://app/ 的读文件、Range、防穿越，以及 /api/ 转发给同步服务
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,7 +8,7 @@ import {createRequire} from 'node:module';
 import {createSyncServer} from '../server/index.mjs';
 
 const require=createRequire(import.meta.url);
-const {createHandler,ENTRY}=require('../win/protocol.cjs');
+const {createHandler,ENTRY}=require('../desktop/protocol.cjs');
 
 // 临时 dist：首页、脚本、10 字节的音频，外加一个不该被读到的文件
 function site(){
@@ -22,7 +22,7 @@ function site(){
 }
 const get=(handler,url,headers={},init={})=>handler(new Request(url,{headers,...init}));
 
-test('Windows 同步版：从 dist 读文件，类型正确，挡住目录穿越和别的主机',async()=>{
+test('Windows 版：从 dist 读文件，类型正确，挡住目录穿越和别的主机',async()=>{
   const s=site(),handler=createHandler({root:s.dist,syncServer:''});
   try{
     assert.equal(ENTRY,'tideweave://app/index.html');
@@ -39,7 +39,7 @@ test('Windows 同步版：从 dist 读文件，类型正确，挡住目录穿越
   }finally{s.cleanup();}
 });
 
-test('Windows 同步版：音频支持按字节范围读取',async()=>{
+test('Windows 版：音频支持按字节范围读取',async()=>{
   const s=site(),handler=createHandler({root:s.dist,syncServer:''}),url='tideweave://app/assets/audio/sfx_click.wav';
   try{
     const probe=await get(handler,url,{Range:'bytes=0-1'});
@@ -51,7 +51,7 @@ test('Windows 同步版：音频支持按字节范围读取',async()=>{
   }finally{s.cleanup();}
 });
 
-test('Windows 同步版：/api/ 转发给真实同步服务，只带同步协议用到的头，状态码原样返回',async()=>{
+test('Windows 版：/api/ 转发给真实同步服务，只带同步协议用到的头，状态码原样返回',async()=>{
   const s=site(),dataDir=fs.mkdtempSync(path.join(os.tmpdir(),'tw-win-sync-'));
   const server=createSyncServer({log:()=>{},dataDir});const {port}=await server.listen(0,'127.0.0.1');
   const handler=createHandler({root:s.dist,syncServer:`http://127.0.0.1:${port}/`});
@@ -71,7 +71,7 @@ test('Windows 同步版：/api/ 转发给真实同步服务，只带同步协议
   }finally{await server.close();fs.rmSync(dataDir,{recursive:true,force:true});s.cleanup();}
 });
 
-test('Windows 同步版：没配同步服务回 503，服务连不上时让网页的请求失败',async()=>{
+test('Windows 版：没配同步服务回 503，服务连不上时让网页的请求失败',async()=>{
   const s=site();
   try{
     assert.equal((await get(createHandler({root:s.dist,syncServer:''}),'tideweave://app/api/v1/health')).status,503);

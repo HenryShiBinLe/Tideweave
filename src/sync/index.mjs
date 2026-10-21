@@ -1,6 +1,6 @@
 // 云同步 · 给前端用的入口
 //
-// 网页版在启动时创建一个同步层，读档、存档都经过它；桌面版（有 window.tideweave）不启用同步，保持离线。
+// 网页版、Mac 版、Windows 版在启动时创建一个同步层，读档、存档都经过它。
 // 前端接入的范围和方式见 docs/协作约定-存档与云同步.md 第六部分；改 main.mjs 之前要先和 @aliezXDD 打招呼。
 import { createSyncController } from "./controller.mjs";
 
@@ -20,8 +20,8 @@ function serverAddress() {
   }
 }
 
-// 当前环境能不能用云同步：网页版可以；Windows 桌面版（Electron 提供 window.tideweave）保持离线；
-// Mac 原生版的 window.tideweave 带 sync: true，表示由它代理同步请求，照网页版的方式存档和同步
+// 当前环境能不能用云同步：网页版可以；Mac 版（mac/）和 Windows 版（desktop/）的 window.tideweave 带 sync: true，
+// 表示由外壳代理同步请求，照网页版的方式存档和同步。window.tideweave 不带 sync 的外壳（早期离线版）不启用同步
 export const syncAvailable = () => typeof window !== "undefined" && (!window.tideweave || window.tideweave.sync === true) && typeof localStorage !== "undefined";
 
 // 用浏览器的默认环境创建同步层（localStorage、window、document、同源服务地址）
