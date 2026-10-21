@@ -483,7 +483,7 @@ async function action(name) {
   if(name==='resume'){open(campaignNext().id);return;}
   if(name==='title-home'){stop();st.screen='home';st.levelId=null;st.session=null;st.modal=null;render();return;}
   if(name==='campaign'){st.screen='map';st.selectedMission=null;st.modal=null;render();return;}
-  if(st.player&&['reset','undo','redo','settings','rules','journal','home'].includes(name)){
+  if(st.player&&['reset','undo','redo','settings','rules','journal','hint','adjacent','home'].includes(name)){
     if(name==='home')stop();else{st.player.paused=true;clearTimeout(st.timer);}
   }
   if(name==='confirm-import'){await importSave();return;}
@@ -543,7 +543,8 @@ async function action(name) {
   }
   if (name === "fullscreen") {
     if (window.tideweave) await window.tideweave.fullscreen();
-    else document.documentElement.requestFullscreen?.();
+    else if (document.fullscreenElement) await document.exitFullscreen?.();
+    else await document.documentElement.requestFullscreen?.();
     return;
   }
   if (name === "quit") {

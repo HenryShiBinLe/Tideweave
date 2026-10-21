@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {levels,levelById} from '../src/levels.mjs';
 import {solution,evaluate} from '../src/engine.mjs';
 import {fresh,recordAttempt} from '../src/progress.mjs';
+import {colorNames} from '../src/assets.mjs';
 const seeded=fresh();for(const l of levels){const s=solution(l);recordAttempt(seeded,l,s,evaluate(l,s));delete seeded.records[l.id].state;}seeded.settings.motion=false;seeded.summaries=[];seeded.briefings=[1,2,3,4,5];
 const server=await serve(),url=`http://127.0.0.1:${server.address().port}`,browser=await chromium.launch({channel:'msedge',headless:true,args:['--enable-unsafe-swiftshader']});
 const page=await browser.newPage({viewport:{width:1440,height:940}}),errors=[];
@@ -28,7 +29,7 @@ try{
     let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('tideweave-progress')).records['04-02.2'].state);
     assert.equal(saved.colors.filter(c=>c>=0).length,1,'click paints exactly one logical face');
     const painted=saved.colors.findIndex(c=>c>=0);
-    await click('[data-action="net"]');assert.match(await page.locator(`[data-node="${painted}"]`).getAttribute('aria-label'),/水青/);
+    await click('[data-action="net"]');assert.ok((await page.locator(`[data-node="${painted}"]`).getAttribute('aria-label')).endsWith(`，${colorNames[saved.colors[painted]]}`),'net uses the current name of the painted color');
     await click('[data-tool="2"]');await page.locator(`[data-node="${painted}"]`).press('Enter');
     await click('[data-action="solid"]');
     await page.selectOption('[data-face]',String(painted));await page.waitForTimeout(100);
