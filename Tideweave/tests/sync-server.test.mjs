@@ -220,6 +220,37 @@ test('托管网页版：文件名带内容哈希的素材让浏览器长期缓�
   }finally{await s.stop();fs.rmSync(root,{recursive:true,force:true});}
 });
 
+test('托管网页版：音频带正确类型、支持按字节范围读取（iOS Safari 播放 <audio> 依赖 206）',async()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'tw-static-')),site=path.join(root,'dist');
+  fs.mkdirSync(path.join(site,'assets','audio'),{recursive:true});
+  const audio='0123456789';fs.writeFileSync(path.join(site,'assets','audio','sfx_clear.3f2a91c0.mp3'),audio);
+  fs.writeFileSync(path.join(site,'assets','audio','sfx_click.wav'),'RIFFwave');
+  fs.writeFileSync(path.join(site,'app.js'),'console.log(1);\n'.repeat(200));
+  const s=await start({staticDir:site});
+  const url='/assets/audio/sfx_clear.3f2a91c0.mp3';
+  try{
+    const full=await request(s.port,'GET',url);
+    assert.equal(full.status,200);assert.equal(full.headers['content-type'],'audio/mpeg');assert.equal(full.headers['accept-ranges'],'bytes');
+    assert.equal(full.headers['cache-control'],'public, max-age=31536000, immutable','带哈希的音频也长期缓存');
+    assert.equal((await request(s.port,'GET','/assets/audio/sfx_click.wav')).headers['content-type'],'audio/wav');
+    // Safari 播放前会先请求开头两个字节
+    const probe=await request(s.port,'GET',url,{headers:{Range:'bytes=0-1'}});
+    assert.equal(probe.status,206);assert.equal(probe.text,'01');assert.equal(probe.headers['content-range'],'bytes 0-1/10');assert.equal(probe.headers['content-length'],'2');
+    const tail=await request(s.port,'GET',url,{headers:{Range:'bytes=7-'}});assert.equal(tail.text,'789');assert.equal(tail.headers['content-range'],'bytes 7-9/10');
+    assert.equal((await request(s.port,'GET',url,{headers:{Range:'bytes=-3'}})).text,'789','后缀形式取最后 3 个字节');
+    assert.equal((await request(s.port,'GET',url,{headers:{Range:'bytes=5-99'}})).text,'56789','结尾超出文件时截到文件末尾');
+    const out=await request(s.port,'GET',url,{headers:{Range:'bytes=10-'}});assert.equal(out.status,416);assert.equal(out.headers['content-range'],'bytes */10');
+    // 多段、写法不对、If-Range 对不上：都回整个文件
+    for(const headers of [{Range:'bytes=0-1,3-4'},{Range:'items=0-1'},{Range:'bytes=5-2'},{Range:'bytes=0-1','If-Range':'Thu, 01 Jan 1970 00:00:00 GMT'}]){
+      const r=await request(s.port,'GET',url,{headers});assert.equal(r.status,200,JSON.stringify(headers));assert.equal(r.text,audio);
+    }
+    assert.equal((await request(s.port,'GET',url,{headers:{Range:'bytes=0-1','If-Range':full.headers['last-modified']}})).status,206);
+    // 文本类文件 gzip 后字节偏移对不上原文件，不做范围读取
+    const js=await request(s.port,'GET','/app.js',{headers:{Range:'bytes=0-1','Accept-Encoding':'gzip'}});
+    assert.equal(js.status,200);assert.equal(js.headers['accept-ranges'],undefined);
+  }finally{await s.stop();fs.rmSync(root,{recursive:true,force:true});}
+});
+
 test('磁盘快满时不再新建同步码，但已有同步码照常更新',async()=>{
   const normal=await start();
   try{await create(normal.port,CODE);}finally{await normal.stop(true);}

@@ -31,6 +31,8 @@ const MIME = {
   ".jpg": "image/jpeg",
   ".ico": "image/x-icon",
   ".woff2": "font/woff2",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
 };
 const COMPRESSIBLE = new Set([".html", ".js", ".mjs", ".css", ".json", ".txt", ".svg"]);
 
@@ -105,8 +107,25 @@ function addVary(res, value) {
   res.setHeader("Vary", [...values].join(", "));
 }
 
-// 带 8 位内容哈希的素材，如 /assets/nodes/node_well.15b7045d.webp
-const HASHED_ASSET = /^\/assets\/.+\.[0-9a-f]{8}\.(webp|png)$/;
+// 带 8 位内容哈希的素材，如 /assets/nodes/node_well.15b7045d.webp、/assets/audio/sfx_clear.3f2a91c0.mp3
+const HASHED_ASSET = /^\/assets\/.+\.[0-9a-f]{8}\.(webp|png|mp3|wav)$/;
+
+// 解析单段 Range 请求头（bytes=a-b、bytes=a-、bytes=-n）。
+// 返回 {start, end}；范围超出文件返回 "unsatisfiable"；多段或写法不认识返回 null（按整个文件回 200，标准允许这样做）
+function parseRange(header, size) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(header).trim());
+  if (!m || (m[1] === "" && m[2] === "")) return null;
+  if (m[1] === "") {
+    // 后缀形式：最后 n 个字节
+    const n = Number(m[2]);
+    if (n === 0 || size === 0) return "unsatisfiable";
+    return { start: Math.max(0, size - n), end: size - 1 };
+  }
+  const start = Number(m[1]), end = m[2] === "" ? size - 1 : Math.min(Number(m[2]), size - 1);
+  if (m[2] !== "" && Number(m[2]) < start) return null;
+  if (start >= size) return "unsatisfiable";
+  return { start, end };
+}
 const acceptsGzip = (req) => /\bgzip\b/.test(req.headers["accept-encoding"] ?? "");
 
 // 读取请求体。超过上限时不能马上回 413 并断开：客户端还在上传，连接一断它只会看到写入失败（EPIPE），
@@ -317,6 +336,24 @@ export function createSyncServer(options = {}) {
       return res.end();
     }
     let body = await fs.readFile(file);
+    // 音频等二进制文件支持按字节范围读取（206）：iOS Safari 播放 <audio> 要求服务端支持 Range，否则可能放不出来；
+    // 10/21 实测 macOS 上的 WebKit 和 Chromium 不支持 Range 也能播，这里是为手机访问兜底，顺带让长音乐可以从中间续读。
+    // 文本类文件会 gzip，不做范围读取（压缩后的字节偏移对不上原文件）
+    if (!COMPRESSIBLE.has(ext)) {
+      headers["Accept-Ranges"] = "bytes";
+      // If-Range 和当前版本对不上，说明文件在两次请求之间变了，回整个新文件
+      const ifRange = req.headers["if-range"];
+      const range = req.headers.range && (!ifRange || ifRange === headers["Last-Modified"]) ? parseRange(req.headers.range, body.length) : null;
+      if (range === "unsatisfiable") {
+        res.writeHead(416, { ...headers, "Content-Range": `bytes */${body.length}`, "Content-Length": 0 });
+        return res.end();
+      }
+      if (range) {
+        const part = body.subarray(range.start, range.end + 1);
+        res.writeHead(206, { ...headers, "Content-Range": `bytes ${range.start}-${range.end}/${body.length}`, "Content-Length": part.length });
+        return res.end(req.method === "HEAD" ? undefined : part);
+      }
+    }
     if (COMPRESSIBLE.has(ext) && acceptsGzip(req)) {
       const cached = gzipCache.get(file);
       if (cached?.mtimeMs === stat.mtimeMs && cached.size === stat.size) body = cached.body;
