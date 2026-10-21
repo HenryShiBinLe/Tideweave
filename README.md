@@ -4,15 +4,21 @@
 
 参加「1024 学科竞赛 · Vibe Coding 创新应用大赛」的作品。
 
+**[下载最新正式版（GitHub Releases）](https://github.com/HenryShiBinLe/Tideweave/releases/latest)** · [在线试玩](http://31.58.87.41:8080)
+
+直接游玩请在发布页的 **Assets** 中下载对应系统的安装包或绿色版，无需安装 Node.js 或开发依赖。`Source code (zip/tar.gz)` 是开发用源码，不是可直接运行的游戏。
+
 ## 三个版本
 
 同一份前端（`src/`），三种外壳；进度可以通过**云同步**在三者之间互通（设置 → 开启云同步，在另一台设备上输入同步码）。
 
-| 版本 | 运行方式 | 外壳 | 安装文件 |
+| 版本 | 运行方式 | 外壳 | 下载（v0.1.0） |
 |---|---|---|---|
 | 网页版 | 浏览器打开 http://31.58.87.41:8080 | 无（`server/` 顺带托管网页） | — |
-| Windows 版 | Windows 10/11 x64，双击安装包 | Electron（`desktop/`） | `release/windows/installer/Tideweave-Setup-<版本>.exe`，备选绿色版 zip |
-| Mac 版 | Apple 芯片（M1 及以后）、macOS 13+ | Swift + WKWebView（`mac/`） | `release/mac/Tideweave-<版本>.dmg` |
+| Windows 版 | Windows 10/11 x64，双击安装包 | Electron（`desktop/`） | [安装包 EXE（推荐）](https://github.com/HenryShiBinLe/Tideweave/releases/download/v0.1.0/Tideweave-Setup-0.1.0.exe) · [绿色版 ZIP](https://github.com/HenryShiBinLe/Tideweave/releases/download/v0.1.0/Tideweave-Portable-0.1.0.zip) |
+| Mac 版 | Apple 芯片（M1 及以后）、macOS 13+ | Swift + WKWebView（`mac/`） | [安装镜像 DMG](https://github.com/HenryShiBinLe/Tideweave/releases/download/v0.1.0/Tideweave-0.1.0.dmg) |
+
+Windows 安装包无需管理员权限。绿色版请先解压到本地磁盘（不要放在网络共享盘），再运行文件夹里的 `Tideweave.exe`。完整安装说明与文件校验值见 [发布页](https://github.com/HenryShiBinLe/Tideweave/releases/latest)。
 
 两个桌面版都没有商业代码签名，第一次打开时系统会拦一下：
 
@@ -20,6 +26,20 @@
 - **Mac**：提示无法验证开发者时点“完成”，再到“系统设置 → 隐私与安全性”点“仍要打开”。镜像里附有《首次打开说明》。
 
 存档都在本机，删除或重装游戏不会丢进度。Windows 版装在 `%LOCALAPPDATA%\Programs\Tideweave`，进度在其中的 `data\`；Mac 版在 App 的网页存储里。
+
+## 游戏画面
+
+<p align="center">
+  <a href="docs/screenshots/home.jpg"><img src="docs/screenshots/home.jpg" alt="脉序主菜单：澜州水网背景与游戏入口" width="600"></a>
+  <br>
+  主菜单
+</p>
+<p align="center">
+  <a href="docs/screenshots/network.jpg"><img src="docs/screenshots/network.jpg" alt="线路规划：在造价限制内连接六处设施" width="300"></a>
+  <a href="docs/screenshots/solid.jpg"><img src="docs/screenshots/solid.jpg" alt="立体着色：旋转十四面灯阵，为相邻面分配不同颜色" width="300"></a>
+  <br>
+  线路规划与立体着色 · 点击图片查看大图
+</p>
 
 ## 玩法
 
@@ -39,7 +59,7 @@
 
 ## 开发
 
-需要 Node 22+。首次安装依赖需要联网，游戏运行本身离线。
+以下命令仅用于从源码开发或运行；直接游玩请下载上方发布包。开发需要 Node 22+，首次安装依赖需要联网，游戏本身可离线运行（云同步需联网）。
 
 ```bash
 npm ci
