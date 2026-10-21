@@ -17,7 +17,8 @@ const readSave=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('tideweav
 await fs.mkdir(path.join(root,'work'),{recursive:true});
 const fixture=await fs.mkdtemp(path.join(root,'work','local-check-'));
 // Test the current source shell with an isolated save, never the player's data or release.
-for(const name of ['desktop','dist','package.json'])await fs.cp(path.join(root,name),path.join(fixture,name),{recursive:true});
+// server/http-range.cjs 是桌面外壳和服务端共用的 Range 解析
+for(const name of ['desktop','dist','package.json','server/http-range.cjs'])await fs.cp(path.join(root,name),path.join(fixture,name),{recursive:true});
 // 测试不连同步服务
 const env={...process.env,TIDEWEAVE_SYNC_SERVER:''};delete env.ELECTRON_RUN_AS_NODE;
 // Windows 上关掉 GPU 仍有软件渲染的 WebGL；Mac 上关掉 GPU 后立体关的 WebGL 起不来，所以只在 Windows 上关

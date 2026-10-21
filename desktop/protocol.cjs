@@ -8,6 +8,7 @@
 // 这里只用标准的 Request / Response / fetch，不依赖 Electron，方便在 Node 里测试（tests/desktop-shell.test.mjs）。
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { parseRange } = require("../server/http-range.cjs");
 
 const SCHEME = "tideweave";
 const HOST = "app";
@@ -40,22 +41,6 @@ const FORWARDED_RESPONSE_HEADERS = ["content-type", "etag", "retry-after"];
 const PROXY_TIMEOUT_MS = 10_000;
 
 const status = (code) => new Response(null, { status: code });
-
-// 解析单段 Range（bytes=a-b、bytes=a-、bytes=-n），规则与 server/index.mjs 相同。
-// 返回 {start, end}；超出文件返回 "unsatisfiable"；多段或写法不认识返回 null（回整个文件）
-function parseRange(header, size) {
-  const m = /^bytes=(\d*)-(\d*)$/.exec(String(header).trim());
-  if (!m || (m[1] === "" && m[2] === "")) return null;
-  if (m[1] === "") {
-    const n = Number(m[2]);
-    if (n === 0 || size === 0) return "unsatisfiable";
-    return { start: Math.max(0, size - n), end: size - 1 };
-  }
-  const start = Number(m[1]), end = m[2] === "" ? size - 1 : Math.min(Number(m[2]), size - 1);
-  if (m[2] !== "" && Number(m[2]) < start) return null;
-  if (start >= size) return "unsatisfiable";
-  return { start, end };
-}
 
 async function serveFile(request, url, root) {
   if (request.method !== "GET" && request.method !== "HEAD") return status(405);
@@ -124,4 +109,4 @@ function createHandler({ root, syncServer, fetch: fetchImpl = globalThis.fetch }
   };
 }
 
-module.exports = { SCHEME, HOST, ENTRY, createHandler, parseRange };
+module.exports = { SCHEME, HOST, ENTRY, createHandler };

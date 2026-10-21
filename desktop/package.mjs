@@ -1,7 +1,7 @@
 // 打包 Windows 版程序目录：release/windows/Tideweave-win32-x64/Tideweave.exe（安装包再由 desktop/installer/ 编译）
 //
 //   1. 构建 dist/（npm run build；SKIP_WEB_BUILD=1 时直接用现有 dist/）；
-//   2. 搭一个临时打包目录：package.json 的入口指向 desktop/main.cjs，只放 desktop/*.cjs 和 dist/；
+//   2. 搭一个临时打包目录：package.json 的入口指向 desktop/main.cjs，只放 desktop/*.cjs、server/http-range.cjs（与服务端共用）和 dist/；
 //   3. 用 node_modules 里同版本的 Windows 版 Electron 打包（Mac 上也能打：packager 会下载 win32-x64 的 Electron，缓存在本机）；
 //   4. 附上说明和第三方许可证，写 release.json。
 // 发布目录里有 data/（玩家存档）时拒绝覆盖；没有存档的旧产物直接替换。
@@ -44,6 +44,9 @@ await fs.rm(stage,{recursive:true,force:true});
 await fs.mkdir(path.join(stage,'desktop'),{recursive:true});
 // 只放运行时需要的 .cjs；打包脚本、图标、安装包脚本、测试、说明都不进安装包
 for(const name of await fs.readdir(path.join(root,'desktop')))if(name.endsWith('.cjs'))await fs.copyFile(path.join(root,'desktop',name),path.join(stage,'desktop',name));
+// Range 解析与服务端共用（desktop/protocol.cjs 引用 ../server/http-range.cjs）
+await fs.mkdir(path.join(stage,'server'),{recursive:true});
+await fs.copyFile(path.join(root,'server','http-range.cjs'),path.join(stage,'server','http-range.cjs'));
 await fs.cp(path.join(root,'dist'),path.join(stage,'dist'),{recursive:true});
 await fs.writeFile(path.join(stage,'package.json'),JSON.stringify({name:pkg.name,version:pkg.version,description:pkg.description,main:'desktop/main.cjs',private:true},null,2));
 

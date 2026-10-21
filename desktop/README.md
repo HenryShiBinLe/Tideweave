@@ -14,7 +14,7 @@ Electron 外壳，加载同一份 `dist/` 前端，带云同步，做法与 Mac 
 
 - `main.cjs`：主进程。
 - `preload.cjs`：向页面提供 `window.tideweave` 接口（与 Mac 版一致），带 `sync: true`，负责旧存档迁移。
-- `protocol.cjs`：`tideweave://app/` 的处理逻辑：读 `dist/`（支持 Range，音频要用）、防目录穿越、转发 `/api/`。不依赖 Electron，测试见 `tests/desktop-shell.test.mjs`。
+- `protocol.cjs`：`tideweave://app/` 的处理逻辑：读 `dist/`（支持 Range，音频要用）、防目录穿越、转发 `/api/`。不依赖 Electron，测试见 `tests/desktop-shell.test.mjs`。Range 的解析和服务端共用 `server/http-range.cjs`，打包时一起带上。
 - `storage.cjs`：存档格式检查和原子写入（迁移、导出导入用）。
 - `config.cjs`：默认同步服务地址 `http://31.58.87.41:8080`。测试时可用环境变量 `TIDEWEAVE_SYNC_SERVER` 临时改，设为空字符串则不联网。
 - `package.mjs`：打包脚本（程序目录）。

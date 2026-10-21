@@ -14,7 +14,8 @@ const {solution, evaluate, initialState} = await import(pathToFileURL(path.join(
 const {uiClick} = await import(pathToFileURL(path.join(root, 'scripts/ui-navigation.mjs')));
 // Run only against a temporary app and save, never the player's data directory.
 const fixture = await fs.mkdtemp(path.join(os.tmpdir(), 'Tideweave-audio-check-'));
-for (const name of ['desktop', 'dist', 'package.json']) await fs.cp(path.join(root, name), path.join(fixture, name), {recursive: true});
+// server/http-range.cjs 是桌面外壳和服务端共用的 Range 解析
+for (const name of ['desktop', 'dist', 'package.json', 'server/http-range.cjs']) await fs.cp(path.join(root, name), path.join(fixture, name), {recursive: true});
 const progress = fresh(); progress.settings.motion = false;
 for (const level of levels) {
   const state = solution(level);

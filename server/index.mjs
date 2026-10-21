@@ -10,6 +10,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { createStore, hashCode } from "./store.mjs";
+import { parseRange } from "./http-range.cjs";
 
 // 与 src/sync/code.mjs 一致：12 位 Crockford Base32；客户端发送前已规范化成大写
 export const CODE_PATTERN = /^[0-9A-HJKMNP-TV-Z]{12}$/;
@@ -110,22 +111,6 @@ function addVary(res, value) {
 // 带 8 位内容哈希的素材，如 /assets/nodes/node_well.15b7045d.webp、/assets/audio/sfx_clear.3f2a91c0.mp3
 const HASHED_ASSET = /^\/assets\/.+\.[0-9a-f]{8}\.(webp|png|mp3|wav)$/;
 
-// 解析单段 Range 请求头（bytes=a-b、bytes=a-、bytes=-n）。
-// 返回 {start, end}；范围超出文件返回 "unsatisfiable"；多段或写法不认识返回 null（按整个文件回 200，标准允许这样做）
-function parseRange(header, size) {
-  const m = /^bytes=(\d*)-(\d*)$/.exec(String(header).trim());
-  if (!m || (m[1] === "" && m[2] === "")) return null;
-  if (m[1] === "") {
-    // 后缀形式：最后 n 个字节
-    const n = Number(m[2]);
-    if (n === 0 || size === 0) return "unsatisfiable";
-    return { start: Math.max(0, size - n), end: size - 1 };
-  }
-  const start = Number(m[1]), end = m[2] === "" ? size - 1 : Math.min(Number(m[2]), size - 1);
-  if (m[2] !== "" && Number(m[2]) < start) return null;
-  if (start >= size) return "unsatisfiable";
-  return { start, end };
-}
 const acceptsGzip = (req) => /\bgzip\b/.test(req.headers["accept-encoding"] ?? "");
 
 // 读取请求体。超过上限时不能马上回 413 并断开：客户端还在上传，连接一断它只会看到写入失败（EPIPE），
