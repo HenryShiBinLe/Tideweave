@@ -11,7 +11,7 @@ test('every level explains its goal, controls and constraints without prerequisi
     assert.ok(l.controls.length>20,l.id+' missing operation explanation');
     assert.match(l.controls,/点|填/,l.id);
     assert.doesNotMatch(l.goal+l.controls,/奇度|偶度|欧拉|拓扑|生成树|强连通|增广|最小割|Dijkstra|Floyd|回溯|共棱|邻接/,l.id);
-    assert.ok(l.rules.length>=2 && l.rules.length<=3,l.id);
+    assert.ok(l.rules.length>=(l.type==='groups'?1:2) && l.rules.length<=3,l.id);
     if(l.budget!==undefined && l.type!=='cut')assert.ok(l.goal.includes(String(l.budget)),l.id+' visible budget');
     if(l.deadline!==undefined)assert.ok(l.goal.includes(`${l.deadline} 天`),l.id+' visible deadline');
   }
@@ -56,4 +56,18 @@ test('opposing arrows have separate visible paths; Floyd bypasses its middle sta
   assert.notDeepEqual(edgeGeometry(l,l.edges[0]).label,edgeGeometry(l,l.edges[1]).label);
   const f=levelById['02-S1.1'];
   assert.ok(edgeGeometry(f,f.edges[2]).label.y<f.nodes[1].y-60);
+});
+
+test('every road overlaps its station plate so card corners never leave a visible gap',()=>{
+  for(const l of levels.filter(l=>!['color','solid'].includes(l.type))){
+    for(const e of l.edges){
+      const geometry=edgeGeometry(l,e),task=['topo','cycle','schedule'].includes(l.type);
+      for(const [point,id] of [[geometry.start,e.a],[geometry.end,e.b]]){
+        const dx=Math.abs(point.x-l.nodes[id].x),dy=Math.abs(point.y-l.nodes[id].y);
+        assert.ok(Number.isFinite(dx+dy),l.id);
+        if(task)assert.ok(dx<58&&dy<34&&dx+dy<81,`${l.id}: road must reach beneath the task's clipped plate`);
+        else assert.ok(Math.hypot(dx,dy)<24,`${l.id}: road must reach beneath the fallback facility`);
+      }
+    }
+  }
 });

@@ -1,0 +1,22 @@
+{
+  "measuredOn": "2026-10-21",
+  "measurement": "File levels use FFmpeg loudnorm / ebur128. Representative mix uses Chromium OfflineAudioContext with the production output graph, both sliders at 100%, then FFmpeg true-peak/loudness analysis.",
+  "music": { "file": "bgm_grid_logic_mix.mp3", "integratedLUFS": -19.99, "truePeakDBTP": -5.98, "loudnessRangeLU": 5.5 },
+  "click": { "file": "sfx_click.wav", "durationSeconds": 0.12, "momentary400msLUFS": -22.1, "truePeakDBTP": -6.1, "sourceStartSeconds": 0.175, "centered": true },
+  "clear": { "file": "sfx_clear.wav", "integratedLUFS": -19.56, "truePeakDBTP": -3.0 },
+  "medal": { "file": "sfx_medal.wav", "integratedLUFS": -15.99, "truePeakDBTP": -4.93 },
+  "mix": { "outputBoostDb": 14, "previousOutputBoostDb": 6, "volumeSliderStep": 0.01, "compressorThresholdDb": -3, "compressorMakeupCompensationDb": -1.5, "musicGainDuringClear": 0.3, "musicGainDuringMedal": 1, "musicGainDuringClick": 1, "simultaneousEffectsMax": 1, "measuredTruePeakTargetDBTP": -1 },
+  "representativeMix": {
+    "integratedLUFS": -8.90,
+    "truePeakDBTP": -1.55,
+    "previousIntegratedLUFS": -14.14,
+    "loudnessIncreaseLU": 5.24,
+    "scenario": "Full 176.14-second BGM; clicks at 10/20/30/60/110/140 seconds, clear at 45 seconds, medal at 90 seconds. BGM gain remains 1 for clicks/medal, 0.3 for clear with exponential recovery. Previous comparison uses the same output graph with +6 dB input; current uses +14 dB. Both sliders 100%. Offline rendered measurement, not OS speaker loudness."
+  },
+  "notes": [
+    "The 120 ms click uses a 400 ms measurement window padded with silence, not long-form integrated loudness.",
+    "BGM and UI are the only sustained gameplay audio; integrated mix loudness depends on actual cue timing and user sliders.",
+    "Peak targets are ceilings: the medal transient is not exaggerated just to reach -3 dBFS.",
+    "Original MP3 files are retained and are not played by the current mix."
+  ]
+}
