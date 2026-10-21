@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('tideweave',Object.freeze({
   quit:()=>ipcRenderer.invoke('window:quit')
   ,onClosing:callback=>ipcRenderer.on('window:closing',()=>callback())
   ,confirmClose:ok=>ipcRenderer.invoke('window:confirm-close',ok)
+  ,onVisibility:callback=>ipcRenderer.on('window:visibility',(_event,visible)=>callback(visible))
 }));

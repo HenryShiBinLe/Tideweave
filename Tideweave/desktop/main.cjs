@@ -43,6 +43,9 @@ if(!app.requestSingleInstanceLock()){app.quit();}else{
     handle('window:fullscreen',()=>{win.setFullScreen(!win.isFullScreen());return win.isFullScreen();});
     handle('window:quit',()=>{app.quit();});
     handle('window:confirm-close',ok=>{if(ok===true){closingConfirmed=true;win.close();}});
+    const notifyVisibility=()=>win.webContents.send('window:visibility',win.isVisible()&&!win.isMinimized());
+    for(const event of ['minimize','restore','hide','show'])win.on(event,notifyVisibility);
+    win.webContents.on('did-finish-load',notifyVisibility);
     win.on('close',event=>{if(!closingConfirmed){event.preventDefault();win.webContents.send('window:closing');}});
     win.once('ready-to-show',()=>win.show());
     win.loadFile(path.resolve(__dirname,'../dist/index.html'));

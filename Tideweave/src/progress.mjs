@@ -1,7 +1,7 @@
 import { levels, levelById, legacyLevelById } from "./levels.mjs";
 import { initialState, evaluate } from "./engine.mjs";
 import { walkEdges } from "./algorithms.mjs";
-const fresh = () => ({ version: 1, records: {}, last: levels[0].id, chapter: 1, summaries: [], briefings: [], settings: { sound: true, volume: 0.25, motion: true, speed: 1 } });
+const fresh = () => ({ version: 1, records: {}, last: levels[0].id, chapter: 1, summaries: [], briefings: [], settings: { sound: true, volume: 1, effectsVolume: 1, music: true, musicVolume: .5, motion: true, speed: 1 } });
 function cleanState(l, value) {
   const s = initialState(l);
   if (!value || typeof value !== "object") return s;
@@ -39,8 +39,8 @@ function normalize(value) {
   p.summaries = Array.isArray(value.summaries) ? value.summaries.filter((x) => Number.isInteger(x) && x >= 1 && x <= 5) : [];
   p.briefings = Array.isArray(value.briefings) ? [...new Set(value.briefings.filter(x=>Number.isInteger(x)&&x>=1&&x<=5))] : [];
   if (value.settings) {
-    for (const k of ["sound", "motion"]) if (typeof value.settings[k] === "boolean") p.settings[k] = value.settings[k];
-    for (const k of ["volume", "speed"]) if (Number.isFinite(value.settings[k])) p.settings[k] = Math.max(k === "volume" ? 0 : 0.5, Math.min(k === "volume" ? 1 : 3, value.settings[k]));
+    for (const k of ["sound", "music", "motion"]) if (typeof value.settings[k] === "boolean") p.settings[k] = value.settings[k];
+    for (const k of ["volume", "effectsVolume", "musicVolume", "speed"]) if (Number.isFinite(value.settings[k])) p.settings[k] = Math.max(k === "speed" ? 0.5 : 0, Math.min(k === "speed" ? 3 : 1, value.settings[k]));
   }
   return p;
 }

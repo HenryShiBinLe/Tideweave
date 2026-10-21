@@ -25,7 +25,6 @@ export const assetManifest={
   node_complete:{name:'状态·完成',path:'assets/nodes/node_complete.png',size:[1254,1254],anchor:'center',status:'已提供'},
   node_conflict:{name:'状态·冲突',path:'assets/nodes/node_conflict.png',size:[1254,1254],anchor:'center',status:'已提供'},
   node_field_entry:{name:'节点·田间入口',path:'assets/nodes/node_field_entry.png',size:[1254,1254],anchor:'center',status:'已提供'},
-  node_highlight:{name:'状态·选中',path:'assets/nodes/node_highlight.png',size:[1254,1254],anchor:'center',status:'已提供'},
   node_hub:{name:'节点·调度枢纽',path:'assets/nodes/node_hub.png',size:[1254,1254],anchor:'center',status:'已提供'},
   node_power_station:{name:'节点·电站',path:'assets/nodes/node_power_station.png',size:[1254,1254],anchor:'center',status:'已提供'},
   node_pump_station:{name:'节点·泵站',path:'assets/nodes/node_pump_station.png',size:[1254,1254],anchor:'center',status:'已提供'},

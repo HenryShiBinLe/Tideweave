@@ -12,6 +12,7 @@ import { captureUI, animateUI, syncMotion, dismissDialog, renderUI } from './ui-
 import {pathCost,criticalSchedule,floydStages,groups} from './algorithms.mjs';
 import {assetManifest,chapterSceneKeys} from './assets.mjs';
 import { syncAvailable, createSync } from './sync/index.mjs';
+import { GameAudio, clickActions } from './audio.mjs';
 const availableAssets=typeof __ASSET_FILES__==='undefined'?[]:__ASSET_FILES__;
 const loadedAssets=Object.fromEntries(availableAssets.map(id=>[id,assetManifest[id].path]));
 const app = document.querySelector("#app");
@@ -22,6 +23,17 @@ const sync=(()=>{try{return syncAvailable()?createSync():null;}catch{return null
 const st = { screen: "home", chapter: 1, levelId: null, progress: fresh(), session: null, modal: null, player: null, timer: null, solid: null, net: false, tool: 0, target: 0, fault: "mark", probe: null, adjacency: false, speed: 1, saveMeta: {}, campaignTab:'main', selectedMission:null };
 const icon = (name, size = 16) => createElement(icons[name] || icons.Circle, { width: size, height: size, "aria-hidden": "true" }).outerHTML;
 const esc = (x) => String(x ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function goalMarkup(level) {
+  const names = [...new Set(level.goalHighlights ?? [])].filter(Boolean).sort((a, b) => b.length - a.length);
+  if (!names.length) return esc(level.goal);
+  const pattern = new RegExp(names.map(name => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
+  let html = '', offset = 0;
+  for (const match of level.goal.matchAll(pattern)) {
+    html += esc(level.goal.slice(offset, match.index)) + `<strong class="tw-goal-name">${esc(match[0])}</strong>`;
+    offset = match.index + match[0].length;
+  }
+  return html + esc(level.goal.slice(offset));
+}
 const l = () => levelById[st.levelId], r = () => st.progress.records[st.levelId] ?? {}, s = () => st.session?.state;
 const viewState = () => st.player?.mode === 'replay' ? { ...st.player.state, ...st.player.frames[st.player.index]?.state } : s();
 const typeLabel = (x) => ({reach:'找相通设施',groups:'分区标记',dfs:'巡检路线',broadcast:'传播预测',forest:'保留线路',scc:'互达分组',euler:'线路巡运',shortest:'路线规划',routes:'多份运单',floyd:'中转比较',postman:'闭环巡运',mst:'建设线路',topo:'工序排序',cycle:'找出循环',schedule:'安排加速',color:'区域上色',solid:'立体上色',matching:'岗位安排',fault:'故障测试',isolation:'隔离设备',cut:'停线断开',reinforce:'线路加固'}[x.type]??'图上操作');
@@ -30,11 +42,7 @@ const btn = (action2, text, ico = "", cls = "", extra = "") => `<button class="t
 const ib = (action2, label, ico, extra = "") => `<button class="tw-icon" data-action="${action2}" aria-label="${esc(label)}" title="${esc(label)}" ${extra}>${icon(ico)}</button>`;
 const reduced = () => !st.progress.settings.motion || matchMedia("(prefers-reduced-motion: reduce)").matches;
 let toastTimer, saveQueue = Promise.resolve();
-let soundContext;
-function tone(success=false){
-  if(!st.progress.settings.sound)return;
-  try{soundContext??=new AudioContext();soundContext.resume();const oscillator=soundContext.createOscillator(),gain=soundContext.createGain();oscillator.frequency.value=success?640:350;gain.gain.setValueAtTime(st.progress.settings.volume*.07,soundContext.currentTime);gain.gain.exponentialRampToValueAtTime(.001,soundContext.currentTime+.13);oscillator.connect(gain);gain.connect(soundContext.destination);oscillator.start();oscillator.stop(soundContext.currentTime+.14);}catch{}
-}
+const audio = new GameAudio();
 function toast(text) {
   let node = document.querySelector("#tw-toast");
   if (!node) {
@@ -77,7 +85,7 @@ function chapterDone(id) {
   return levels.filter((x) => x.chapter === id && !x.optional).every((x) => passed(x.id));
 }
 function header() {
-  return `<header class="tw-header"><button class="tw-brand" data-action="title-home"><span class="tw-seal">脉</span><span><b>脉序</b><small>TIDEWEAVE</small></span></button><span class="tw-context">澜州联运区 <i>/</i> 联运调度署</span><div class="tw-header-actions">${ib("journal", "筹算回放", "BookOpen")}${ib("sound", st.progress.settings.sound ? "关闭音效" : "开启音效", st.progress.settings.sound ? "Volume2" : "VolumeX")}${ib("settings", "设置", "Settings")}</div></header>`;
+  return `<header class="tw-header"><button class="tw-brand" data-action="title-home"><span class="tw-seal">脉</span><span><b>脉序</b><small>TIDEWEAVE</small></span></button><span class="tw-context">澜州联运区 <i>/</i> 联运调度署</span><div class="tw-header-actions">${ib("journal", "筹算回放", "BookOpen")}${ib("sound", st.progress.settings.sound ? "关闭游戏声音" : "开启游戏声音", st.progress.settings.sound ? "Volume2" : "VolumeX")}${ib("settings", "设置", "Settings")}</div></header>`;
 }
 function campaignNext() {
   const last=levelById[st.progress.last];
@@ -123,7 +131,7 @@ function map() {
   const detail=selected?`<aside class="tw-deployment" aria-label="所选关卡">
     <div class="tw-deployment-top"><span class="tw-eyebrow">${selected.optional?'EX / 选修挑战':'MAIN / 主线任务'}</span>${icon('Flag',20)}</div><div class="tw-deployment-identity"><div class="tw-deployment-code">${selected.id}</div>
     <h2>${esc(selected.title)}</h2><span class="tw-mission-status">${!unlock(selected.id)?'尚未开放':record?.legacy?'旧版已通关 · 新版可重玩':record?.perfect?'徽记已取得':record?.passed?'已通关':selected.tutorial?'操作入门':'待完成'}</span></div>
-    <div class="tw-deployment-goal"><h3>本关目标</h3><p>${esc(selected.goal)}</p></div>
+    <div class="tw-deployment-goal"><h3>本关目标</h3><p>${goalMarkup(selected)}</p></div>
     ${selected.badge?`<div class="tw-deployment-badge">${icon('Award')}<span>徽记挑战<br><b>${esc(selected.badge)}</b></span></div>`:''}
     ${!unlock(selected.id)?`<p class="tw-lock-reason">${icon('Lock')}${esc(lockReason(selected))}</p>`:''}
     ${btn('deploy',record?.passed?'重新挑战':'进入关卡','ArrowRight','primary',`data-level="${selected.id}" ${unlock(selected.id)?'':'disabled'}`)}
@@ -153,10 +161,11 @@ function metric() {
 }
 function metricOutput() {
   const x = l(), v = viewState();
-  if (st.player?.mode === 'replay' || !['mst', 'reinforce'].includes(x.type)) return `<output aria-live="polite">${esc(metric())}</output>`;
+  if (!['mst', 'reinforce'].includes(x.type)) return `<output aria-live="polite">${esc(metric())}</output>`;
   const cost = v.selected.reduce((sum, i) => sum + (x.edges[i]?.w ?? 1), 0);
   const parts = x.type === 'mst' ? groups(x, v.selected).length : null;
-  return `<output class="tw-cost" aria-live="polite"><span class="tw-cost-label">${x.type === 'reinforce' ? '新增造价' : '造价'}</span><strong>${cost}</strong><span class="tw-cost-limit">/ ${x.budget}<small>预算</small></span>${parts === null ? '' : `<span class="tw-cost-status">${parts === 1 ? '已全部接通' : `还分为 ${parts} 片`}</span>`}</output>`;
+  const status = st.player?.mode === 'replay' ? metric() : parts === null ? '' : parts === 1 ? '已全部接通' : `还分为 ${parts} 片`;
+  return `<output class="tw-cost" aria-live="polite"><span class="tw-cost-label">${x.type === 'reinforce' ? '新增造价' : '造价'}</span><strong>${cost}</strong><span class="tw-cost-limit">/ ${x.budget}<small>预算</small></span>${status ? `<span class="tw-cost-status" title="${esc(status)}">${esc(status)}</span>` : ''}</output>`;
 }
 function toolbar() {
   const x = l(), v = s();
@@ -164,7 +173,7 @@ function toolbar() {
   if (["color", "solid", "groups", "scc"].includes(x.type)) out += `<div class="tw-swatches" aria-label="${x.type === "color" || x.type === "solid" ? "选择颜色" : "选择分组"}">${palette.map((c, i) => `<button class="tw-swatch ${st.tool === i ? "active" : ""}" data-tool="${i}" aria-label="${x.type === "color" || x.type === "solid" ? colorNames[i] : "分组 " + (i + 1)}" style="--swatch:${c};--swatch-ink:${paletteText[i]}">${i + 1}</button>`).join("")}</div>`;
   if (x.type === "routes") out += `<div class="tw-segment">${x.targets.map((n, i) => `<button data-target="${i}" class="${st.target === i ? "selected" : ""}">${esc(x.nodes[n].label)}</button>`).join("")}</div>`;
   if (x.type === "broadcast") out += `<div class="tw-predict"><span>预测轮次</span><button data-action="less">−</button><b>${v.prediction}</b><button data-action="more">+</button></div>`;
-  if (x.type === "fault") out += `<div class="tw-segment"><button data-mode="mark" class="${st.fault === "mark" ? "selected" : ""}">标记</button><button data-mode="probe" class="${st.fault === "probe" ? "selected" : ""}">停用测试</button></div>${v.probe !== null ? btn("clear-probe", "恢复原图", "RotateCcw") : ""}`;
+  if (x.type === "fault") out += `<div class="tw-segment"><button data-mode="mark" class="${st.fault === "mark" ? "selected" : ""}">标记</button><button data-mode="probe" class="${st.fault === "probe" ? "selected" : ""}">停用测试</button></div>${btn("clear-probe", "恢复原图", "RotateCcw", '', v.probe !== null ? '' : 'disabled aria-hidden="true" style="visibility:hidden"')}`;
   if (x.type === "color") out += btn("adjacency", st.adjacency ? "隐藏共边关系" : "查看共边关系", "Network", st.adjacency ? "selected" : "");
   if (x.type === "solid") out += `<div class="tw-segment"><button data-action="solid" class="${!st.net ? "selected" : ""}">${icon("Box")} 立体</button><button data-action="net" class="${st.net ? "selected" : ""}">${icon("UnfoldHorizontal")} 展开图</button></div>${ib("reset-view", "复位视角", "RotateCcw")}${ib("unpainted", "定位未着色面", "ScanSearch")}`;
   if(x.type==='solid')out+=`<label class="tw-face">面 <select data-face aria-label="选择面">${solids[x.solid].labels.map((name,i)=>`<option value="${i}" ${(st.face??0)===i?'selected':''}>${name}</option>`).join('')}</select></label>${btn('paint-face','着色','Check')}${ib('adjacent','查看相邻面','Network')}`;
@@ -187,33 +196,33 @@ function game() {
     <header class="tw-mission-head">
       ${ib("home", "返回任务地图", "ArrowLeft")}
       <div class="tw-mission-ident"><span class="tw-eyebrow">${esc(chapter.title)}</span><h1>${esc(x.title)}</h1></div><span class="tw-level-code">${x.id}</span>
-      <div class="tw-header-actions">${ib("sound", st.progress.settings.sound ? "关闭音效" : "开启音效", st.progress.settings.sound ? "Volume2" : "VolumeX")}${ib("settings", "设置", "Settings")}</div>
+      <div class="tw-header-actions">${ib("sound", st.progress.settings.sound ? "关闭游戏声音" : "开启游戏声音", st.progress.settings.sound ? "Volume2" : "VolumeX")}${ib("settings", "设置", "Settings")}</div>
     </header>
-    <section class="tw-task"><div class="tw-task-copy"><div class="tw-goal-line"><span class="tw-task-kicker">通关目标</span><h2>${esc(x.goal)}</h2></div><div class="tw-control-line"><span>${icon('MousePointer2')}操作</span><p>${esc(x.controls)}</p></div></div>
+    <section class="tw-task"><div class="tw-task-copy"><div class="tw-goal-line"><span class="tw-task-kicker">通关目标</span><h2>${goalMarkup(x)}</h2></div><div class="tw-control-line"><span>${icon('MousePointer2')}操作</span><p>${esc(x.controls)}</p></div></div>
       ${x.badge ? `<aside>${icon("Award")}<span>额外挑战<br><b>${esc(x.badge)}</b></span></aside>` : ""}
     </section>
     <div class="tw-context-tools ${toolbar()?'':'status-only'}">${toolbar()}${metricOutput()}</div>
     <section class="tw-board ${x.type === "solid" ? "solid-board" : ""}${scene ? ' has-chapter-scene' : ''}">${scene ? `<img class="tw-chapter-scene" src="${esc(scene)}" alt="" aria-hidden="true" draggable="false"/>` : ''}<div class="tw-board-frame" aria-hidden="true"><i class="frame-corner nw"></i><i class="frame-corner ne"></i><i class="frame-corner sw"></i><i class="frame-corner se"></i><i class="frame-register"></i></div>${board()}${x.type === "schedule" ? timeline(x, v) : ""}</section>
-    ${st.player ? playback() : `<div class="tw-feedback" aria-live="polite">${result ? `${icon(result.pass ? "Check" : "Info")}<span class="${result.pass ? "good" : "warn"}">${esc(result.message)}</span>` : ""}</div>`}
+    <div class="tw-status-strip">${st.player ? playback() : `<div class="tw-feedback" aria-live="polite">${result ? `${icon(result.pass ? "Check" : "Info")}<span class="${result.pass ? "good" : "warn"}">${esc(result.message)}</span>` : ""}</div>`}<label class="tw-speed-control">演示倍速<select class="tw-speed" data-speed aria-label="演示倍速">${[.5,1,2,3].map(v=>`<option value="${v}" ${st.progress.settings.speed===v?'selected':''}>${v}×</option>`).join('')}</select></label></div>
     <footer class="tw-operation"><div>
       ${ib("undo", "撤销", "Undo2", st.session.history.length ? "" : "disabled")}${ib("redo", "重做", "Redo2", st.session.future.length ? "" : "disabled")}${ib("reset", "重置方案", "RotateCcw")}
       ${btn("rules", "完整规则", "CircleHelp")}${r().hintUnlocked ? ib("hint", "策略提示", "Lightbulb") : ""}
-    </div><div>${r().passed ? ib("replay", "查看回放", "BookOpen") : ""}${btn(st.player ? "edit" : "run", st.player ? "返回编辑" : "运行检查", st.player ? "ArrowLeft" : "Play", "primary")}</div></footer>
+    </div><div>${ib("replay", "查看回放", "BookOpen", r().passed ? '' : 'disabled aria-hidden="true" style="visibility:hidden"')}${btn(st.player ? "edit" : "run", st.player ? "返回编辑" : "运行检查", st.player ? "ArrowLeft" : "Play", "primary")}</div></footer>
   </main>`;
 }
 function playback() {
   const p = st.player;
-  const comparison = p.mode === 'replay' && !r().best ? '<small>旧版成绩已保留 · 当前展示新版参考方案</small>' : p.mode === 'replay' ? `${ib('compare-replay', p.own ? '查看筹算方案' : '查看我的最佳方案', 'ArrowLeftRight')}<small>我的最佳 ${p.bestMetric} · 参考 ${p.referenceMetric} ${esc(p.result.unit)}</small>` : '';
-  return `<section class="tw-playback"><div>${ib("prev-frame", "上一步", "ChevronLeft", p.index ? "" : "disabled")}${ib("pause", p.paused ? "播放" : "暂停", p.paused ? "Play" : "Pause")}${ib("next-frame", "下一步", "ChevronRight")}${ib("skip", "跳过回放", "SkipForward")}</div><input data-frame type="range" min="0" max="${p.frames.length - 1}" value="${p.index}" aria-label="回放步骤"/><span>${esc(p.frames[p.index]?.caption)}</span>${comparison}</section>`;
+  const comparison = p.mode !== 'replay' ? '' : !r().best ? '旧版成绩已保留 · 当前展示新版参考方案' : `我的最佳 ${p.bestMetric} · 参考 ${p.referenceMetric} ${p.result.unit}`;
+  return `<section class="tw-playback"><div class="tw-playback-buttons">${ib("prev-frame", "上一步", "ChevronLeft", p.index ? "" : "disabled")}${ib("pause", p.paused ? "播放" : "暂停", p.paused ? "Play" : "Pause")}${ib("next-frame", "下一步", "ChevronRight")}${ib("skip", "跳过回放", "SkipForward")}</div><input data-frame type="range" min="0" max="${p.frames.length - 1}" value="${p.index}" aria-label="回放步骤"/><span class="tw-playback-caption" tabindex="0">${esc(p.frames[p.index]?.caption)}${comparison ? `<small>${esc(comparison)}</small>` : ''}</span>${p.mode === 'replay' && r().best ? ib('compare-replay', p.own ? '查看筹算方案' : '查看我的最佳方案', 'ArrowLeftRight') : ''}</section>`;
 }
 function dialog() {
   if (!st.modal) return "";
   const x = l(), result = st.session?.result;
   let body = "";
-  if (st.modal === "rules") body = `<span class="tw-eyebrow">${esc(typeLabel(x))} / ${x.id}</span><h2>本关规则</h2><h3>怎样算通关</h3><p>${esc(x.goal)}。</p><h3>怎样操作</h3><p>${esc(x.controls)}</p><h3>还需要知道</h3><ul>${x.rules.map(rule=>`<li>${esc(rule)}</li>`).join('')}</ul>${x.badge ? `<p class="tw-insight">额外挑战：${esc(x.badge)}。这是徽记条件，不是普通通关条件。</p>` : ""}${btn("close", "返回关卡", "ArrowLeft", "primary")}`;
+  if (st.modal === "rules") body = `<span class="tw-eyebrow">${esc(typeLabel(x))} / ${x.id}</span><h2>本关规则</h2><h3>怎样算通关</h3><p>${goalMarkup(x)}。</p><h3>怎样操作</h3><p>${esc(x.controls)}</p><h3>还需要知道</h3><ul>${x.rules.map(rule=>`<li>${esc(rule)}</li>`).join('')}</ul>${x.badge ? `<p class="tw-insight">额外挑战：${esc(x.badge)}。这是徽记条件，不是普通通关条件。</p>` : ""}${btn("close", "返回关卡", "ArrowLeft", "primary")}`;
   if (st.modal === "hint") body = `<span class="tw-eyebrow">策略提示 / 自选</span><h2>再看一眼关系</h2><ol>${x.hints.slice(0, st.hintDepth ?? 1).map((h) => `<li>${esc(h)}</li>`).join("")}</ol><div>${(st.hintDepth ?? 1) < 3 ? btn("deeper", "再提示一点", "Lightbulb") : ""}${btn("close", "继续尝试", "ArrowLeft", "primary")}</div>`;
   if (st.modal === "result") body = `<span class="tw-eyebrow">${result.pass ? "运行通过" : "待调整"} / ${x.id}</span><h2>${result.pass ? result.perfect ? "联运有序" : "设施恢复" : "还需调整"}</h2><p>${esc(result.message)}</p>${result.pass && levels.filter(q=>q.unit===x.unit).at(-1).id===x.id ? `<p class="tw-insight">${esc(x.insight)}</p>` : ""}<div class="tw-result"><b>${result.metric}</b><span>${esc(result.unit)}</span>${result.perfect ? icon("Award", 22) : ""}</div><div>${btn("close", result.pass ? "继续优化" : "返回调整", "ArrowLeft")}${result.pass ? btn("continue", "继续", "ArrowRight", "primary") : ""}</div>`;
-  if (st.modal === "settings") body = `<span class="tw-eyebrow">本地设置</span><h2>游戏设置</h2><label>音效 <input data-setting="sound" type="checkbox" ${st.progress.settings.sound ? "checked" : ""}/></label><label>音量 <input data-setting="volume" type="range" min="0" max="1" step=".05" value="${st.progress.settings.volume}"/></label><label>减少动态效果 <input data-setting="motion" type="checkbox" ${st.progress.settings.motion ? "" : "checked"}/></label><p class="tw-small">${window.tideweave ? st.saveMeta.portable?'便携存档：data/progress.json':'存档：系统用户目录，迁移前请导出。' : "进度保存在浏览器本地。"}</p>${sync?syncPanel():''}<div class="tw-save-actions">${btn("export", "导出存档", "Download")}${btn("import", "导入存档", "Upload")}</div><footer class="tw-settings-footer"><div>${ib('fullscreen','全屏','Maximize')}${window.tideweave?ib('quit','退出游戏','LogOut'):''}</div>${btn("close", "完成", "Check", "primary")}</footer>`;
+  if (st.modal === "settings") body = `<span class="tw-eyebrow">本地设置</span><h2>游戏设置</h2><label>游戏声音 <input data-setting="sound" type="checkbox" ${st.progress.settings.sound ? "checked" : ""}/></label><label>主音量 <input data-setting="volume" type="range" min="0" max="1" step=".01" value="${st.progress.settings.volume}"/></label><label>音效音量 <input data-setting="effectsVolume" type="range" min="0" max="1" step=".01" value="${st.progress.settings.effectsVolume}"/></label><label>背景音乐 <input data-setting="music" type="checkbox" ${st.progress.settings.music ? "checked" : ""}/></label><label>音乐音量 <input data-setting="musicVolume" type="range" min="0" max="1" step=".01" value="${st.progress.settings.musicVolume}"/></label><label>减少动态效果 <input data-setting="motion" type="checkbox" ${st.progress.settings.motion ? "" : "checked"}/></label><p class="tw-small">${window.tideweave ? st.saveMeta.portable?'便携存档：data/progress.json':'存档：系统用户目录，迁移前请导出。' : "进度保存在浏览器本地。"}</p>${sync?syncPanel():''}<div class="tw-save-actions">${btn("export", "导出存档", "Download")}${btn("import", "导入存档", "Upload")}</div><footer class="tw-settings-footer"><div>${ib('fullscreen','全屏','Maximize')}${window.tideweave?ib('quit','退出游戏','LogOut'):''}</div>${btn("close", "完成", "Check", "primary")}</footer>`;
   if (st.modal === "journal") body = `<span class="tw-eyebrow">EX / 筹算·回放</span><h2>已完成的调度</h2><div class="tw-journal">${levels.filter((q) => passed(q.id) && !q.tutorial).map((q) => `<button data-replay-id="${q.id}"><b>${q.id}</b><span>${esc(q.title)}</span>${icon("Play")}</button>`).join("") || "<p>完成任务后，这里会保存过程回放。</p>"}</div>`;
   if(st.modal==='briefing'){
     const ch=chapters.find(c=>c.id===st.briefingChapter)??chapters.find(c=>c.id===st.chapter);
@@ -233,6 +242,7 @@ function dialog() {
   return `<dialog class="tw-dialog" aria-label="调度对话框"><button class="tw-dialog-close" data-action="close" aria-label="关闭">${icon("X")}</button>${body}</dialog>`;
 }
 function render() {
+  audio.configure(st.progress.settings);
   const previous=captureUI(app);
   syncMotion(st.progress.settings.motion);
   const view={screen:st.screen,chapter:st.chapter,tab:st.campaignTab,level:st.levelId,selected:st.selectedMission,modal:st.modal,replay:!!st.player,net:st.net};
@@ -262,7 +272,6 @@ function render() {
     }
   }
   bind();
-  if(st.player){const bar=app.querySelector('.tw-playback');bar.insertAdjacentHTML('beforeend',`<select class="tw-speed" aria-label="回放速度">${[.5,1,2,3].map(v=>`<option value="${v}" ${st.progress.settings.speed===v?'selected':''}>${v}×</option>`).join('')}</select>`);bar.querySelector('select').onchange=e=>{st.progress.settings.speed=Number(e.target.value);save();step();};}
   if(st.modal==='settings'){
     const el=app.querySelector('dialog');
     if(st.saveMeta.portable===false)el.insertAdjacentHTML('beforeend',`<p class="tw-small">当前目录只读，实际存档位于 ${esc(st.saveMeta.savePath)}。迁移前请导出。</p>`);
@@ -298,12 +307,14 @@ function edit(kind, id, option = st.tool) {
   if (st.player) return;
   try {
     if (l().type === "fault" && st.fault === "probe" && (kind === "node" || kind === "edge")) {
+      if (st.session.state.probe === id) return;
       st.session.state.probe = id;
+      audio.click();
       render();
       return;
     }
-    st.session.change(kind, id, option);
-    tone();
+    if (!st.session.change(kind, id, option)) return;
+    if (kind !== 'predict') audio.click();
     save();
     render();
   } catch (e) {
@@ -340,7 +351,7 @@ function finish() {
   stop();
   if (p.mode === "run") {
     st.session.finish(p.result);
-    tone(p.result.pass);
+    audio.result(p.result);
     save();
     st.modal = "result";
   }
@@ -525,6 +536,7 @@ async function action(name) {
   }
   if (name === "sound") {
     st.progress.settings.sound = !st.progress.settings.sound;
+    audio.configure(st.progress.settings);
     save();
     render();
     return;
@@ -716,11 +728,31 @@ function bind() {
     st.modal = null;
     replay(e.dataset.replayId);
   }));
-  app.querySelectorAll("[data-setting]").forEach((e) => e.addEventListener("change", () => {
-    st.progress.settings[e.dataset.setting] = e.dataset.setting==='motion'?!e.checked:e.type === "checkbox" ? e.checked : Number(e.value);
-    if(e.dataset.setting==='motion')syncMotion(st.progress.settings.motion);
+  app.querySelectorAll("[data-setting]").forEach(e => {
+    const update = () => {
+      st.progress.settings[e.dataset.setting] = e.dataset.setting === 'motion' ? !e.checked : e.type === 'checkbox' ? e.checked : Number(e.value);
+      if (e.dataset.setting === 'motion') syncMotion(st.progress.settings.motion);
+      audio.configure(st.progress.settings);
+    };
+    if (e.type === 'range') e.addEventListener('input', update);
+    e.addEventListener('change', () => {
+      update();
+      save();
+      // Refresh the header's mute icon without replacing the focused slider.
+      const mute = app.querySelector('[data-action="sound"]');
+      if (mute) {
+        const label = st.progress.settings.sound ? '关闭游戏声音' : '开启游戏声音';
+        mute.innerHTML = icon(st.progress.settings.sound ? 'Volume2' : 'VolumeX');
+        mute.setAttribute('aria-label', label);
+        mute.title = label;
+      }
+    });
+  });
+  app.querySelector('.tw-speed')?.addEventListener('change', e => {
+    st.progress.settings.speed = Number(e.target.value);
     save();
-  }));
+    if (st.player) step();
+  });
   const range = app.querySelector("[data-frame]");
   if (range) range.addEventListener("input", () => {
     clearTimeout(st.timer);
@@ -732,6 +764,20 @@ function bind() {
   app.querySelector('[data-face]')?.addEventListener('change',e=>{st.face=Number(e.target.value);st.solid?.focusFace(st.face);});
   app.querySelectorAll('[data-node],[data-edge]').forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.dispatchEvent(new MouseEvent('click',{bubbles:true}));}}));
 }
+// Capture before navigation replaces the clicked button; board edits sound only on a real change.
+app.addEventListener('click', e => {
+  const button = e.target.closest('button');
+  if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true' || button.closest('[data-node],[data-edge],[data-pair]')) return;
+  if (clickActions.has(button.dataset.action)) audio.click();
+}, true);
+document.addEventListener('pointerdown', () => audio.activate(), { capture: true });
+document.addEventListener('keydown', () => audio.activate(), { capture: true });
+let desktopHidden = false;
+const syncAudioVisibility = () => audio.setHidden(desktopHidden || document.hidden);
+window.tideweave?.onVisibility?.(visible => { desktopHidden = !visible; syncAudioVisibility(); });
+document.addEventListener('visibilitychange', syncAudioVisibility);
+window.addEventListener('pagehide', () => audio.setHidden(true));
+window.addEventListener('pageshow', syncAudioVisibility);
 app.addEventListener('keydown',e=>{
   if(st.modal||st.screen!=='game'||e.target.matches('input,select'))return;
   if(e.ctrlKey&&e.key.toLowerCase()==='z'){e.preventDefault();action(e.shiftKey?'redo':'undo');}
@@ -746,6 +792,8 @@ try {
   st.progress = fresh();
 }
 render();
+syncAudioVisibility();
+audio.activate();
 if(st.saveMeta.warning)toast(st.saveMeta.warning);
 if(sync){
   // 同步状态变化时只更新文字，不整页重画（免得打断弹窗和动效）

@@ -72,7 +72,7 @@ export function captureUI(root) {
   const route=root.querySelector('.tw-route-map');
   if(route&&lastView?.screen==='map')routePositions.set(routeKey(lastView),route.scrollTop);
   const focus=document.activeElement;
-  const navigation=focus?.matches(':focus-visible,[data-setting]')?['chapter','campaignTab','selectLevel','setting'].find(key=>key in focus.dataset):null;
+  const navigation=focus?.matches(':focus-visible,[data-setting],[data-speed]')?['chapter','campaignTab','selectLevel','setting','speed'].find(key=>key in focus.dataset):null;
   const settings=new Map([...root.querySelectorAll('input[type=checkbox]')].map(el=>[el.dataset.setting,{
     track:values(el,['backgroundColor']),thumb:values(el,['transform'],'::before')
   }]));

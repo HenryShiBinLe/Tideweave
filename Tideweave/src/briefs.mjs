@@ -3,46 +3,52 @@ export function beginnerBrief(l) {
   const name = i => l.nodes[i]?.label ?? '起点';
   const count = l.nodes.length;
   let goal, controls, rules, insight;
-  let hints = l.hints, perfect = l.perfect;
+  let hints = l.hints, perfect = l.perfect, goalHighlights = [];
   switch (l.type) {
     case 'reach':
       goal = `标出从${name(l.source)}沿线能到达的所有设施，包括${name(l.source)}`;
+      goalHighlights = [name(l.source)];
       controls = '点击设施选中，再点取消；亮起的是你的选择。选好后点“运行检查”。';
       rules = ['只看线路是否接通，画面上的距离不算。', `从${name(l.source)}出发，可以经过其他设施；没有设施的交叉处不接通。`];
+      hints = [hints[0], '建筑不影响线路的连通性。', '从调度站沿任意一条线走到下一站，再继续观察寻找。'];
       insight = '能沿一条或多条线路到达，就叫“可达”。没有直接连线，也可能通过别处到达。';
       break;
     case 'groups':
     case 'scc': {
       const directed = l.type === 'scc';
       goal = directed ? '沿箭头能互相往返的设施涂同色，其余分开' : '沿线能互相到达的设施涂同色，其余分开';
-      controls = '先选色样，再点设施分组；换色可改组，再点同色设施可取消。每个设施都要分组。';
-      rules = [directed ? '必须既能去、又能回；可以经过同组其他设施。' : '可以经过同组其他设施，不必直接相连。',
+      controls = '先选色样，再点设施分组；相同颜色为同组。每个设施都要分组。';
+      rules = [...(directed ? ['必须既能去、又能回；可以经过同组其他设施。'] : []),
         '能互相到达的设施不能拆成两组；不能到达的设施不能混为一组。'];
+      if (!directed) hints = [hints[0], '建筑不影响线路的连通性。', '同一片相通区域全部染完色后，再找未分组的建筑，用新颜色另分一组。'];
       insight = directed ? '能互相往返的最大一组，叫“强连通分量”。只有去路、没有回路的两组不能合并。' : '互相能到达的一整组，叫“连通分量”；独立设施也自成一组。';
       break;
     }
     case 'dfs':
       goal = l.strict ? `从${name(l.source)}巡检全部设施：有没去过的邻站先去，没有就按来路退一站` : `从${name(l.source)}出发，把 ${count} 个设施都走到`;
+      goalHighlights = [name(l.source)];
       controls = '点击与当前位置直接相连的下一站；返回也要点击上一站。“撤销”只改计划，不算走回去。';
       rules = ['可以重复经过设施和线路；不要求最终回到起点。',
         l.strict ? '还有没去过的相邻设施时，不能提前返回；没有时，只能返回来路的上一站。' : '没有新路时沿来路返回，再找没走过的支路。', '撤销用于改计划，不算实际走回去。'];
       insight = '先走到底，再沿来路退回找漏掉的支路，叫“深度优先搜索”。返回也是探索的一部分。';
       break;
     case 'broadcast':
-      goal = l.fixedSource ? `填出${name(l.target)}第几轮收到信号` : `选发射站并填准确轮数，让所有设施在 ${l.limit} 轮内收到信号`;
-      controls = l.fixedSource ? '用 − / + 填轮数。发射站第 0 轮已有信号，每轮向外传一条线，同一轮可向多处传播。' : '点击设施选发射站，用 − / + 填最后一站收到信号的轮数。发射站算第 0 轮，每轮向外传一条线。';
+      goal = l.fixedSource ? `在轮次预测处填出${name(l.target)}第几轮收到信号` : `自选发射站并在轮次预测处填准确轮数，让所有设施在 ${l.limit} 轮内收到信号`;
+      controls = l.fixedSource ? '用 − / + 填轮数。发射站第 0 轮已有信号，信号沿线路向外辐射扩散，每轮传一段。' : '点击设施选发射站，用 − / + 填最后一站收到信号的轮数。发射站算第 0 轮，信号沿线路向外辐射扩散，每轮传一段。';
       rules = ['发射站在第 0 轮已有信号；它旁边的设施在第 1 轮收到。', '同一轮可以向多条线路传播；刚收到的设施下一轮才能继续转发。', l.fixedSource ? `只填写${name(l.target)}的到达轮数。` : '填写最后一个设施收到信号时的轮数，不是所有轮数相加。'];
+      hints = [l.fixedSource ? hints[0] : '先找到一个能把信号传到所有设备的建筑。', hints[1], '比较最远站点离起点有几段路线。'];
       insight = '一圈一圈扩散，叫“广度优先搜索”；第一次收到信号的轮数，就是到起点的最少线路数。';
       break;
     case 'forest':
       goal = '选出保留的线路，让原本相通的设施仍能互相到达';
-      controls = '点线路选中，再点取消。检查时只保留亮起的线路，未选的会移除。';
-      hints = ['先检查有没有设施被单独留下。', '两处设施之间若有两条走法，试着去掉其中一条线路。', '每片网络有几个设施，就尝试只留比这个数少 1 的线路。'];
-      rules = ['只使用选中的线路；原来分开的网络不必互相接通。', '先保证原有连接不丢失，再尝试减少线路。'];
+      controls = l.id === '01-04.2' ? '点线路选中，再点取消。运行检查时只使用选中的线路。' : '点线路选中，再点取消。检查时只保留亮起的线路，未选的会移除。';
+      hints = ['先检查有没有设施被单独留下。', '观察整个网络中是否有环；两处设施之间若有两条走法，试着去掉其中一条线路。', '每片网络有几个设施，就尝试只留比这个数少 1 的线路。'];
+      rules = [l.id === '01-04.1' ? '运行检查时只使用选中的线路。' : '只使用选中的线路；原来分开的网络不必互相接通。', '先保证原有连接不丢失，再尝试减少线路。'];
       insight = '同一片网络连起来又不绕成圈，叫“生成树”；多片这样的网络组成“森林”。';
       break;
     case 'euler':
       goal = `从${name(l.source)}出发，每条线路都走一遍，不能重复`;
+      goalHighlights = [name(l.source)];
       controls = '依次点击与当前位置有线相连的下一站。同一设施可以再次经过，但线路不能重复走。';
       rules = ['每条线路恰好走一次，但同一个设施可以经过多次。', '不要求回到起点；起点已由本关指定。'];
       insight = '每条线路恰好走一次，叫“欧拉路径”。连接 1、3、5…条线路的站叫“奇度点”；途中进出要成对，所以只能有 0 或 2 个这样的站。';
@@ -50,20 +56,24 @@ export function beginnerBrief(l) {
     case 'shortest':
     case 'routes':
       goal = l.type === 'routes' ? `分别从${name(l.source)}送到${l.targets.map(name).join('、')}，总用时不超过 ${l.budget}` : `从${name(l.source)}送到${name(l.target)}，用时不超过 ${l.budget}`;
-      controls = l.type === 'routes' ? `先选运单，再从${name(l.source)}依次点击相连的下一站。每份单独规划；线路数字是耗时，各份用时相加。` : '依次点击与当前位置相连的下一站。线路数字是耗时，经过的数字相加就是总用时。';
+      goalHighlights = [name(l.source), ...(l.type === 'routes' ? l.targets.map(name) : [name(l.target)])];
+      controls = l.type === 'routes' ? `先选运单，再从${name(l.source)}依次点击相连的下一站。每份单独规划；线路数字是耗时，各份用时相加。` : '依次点击与当前位置相连的下一站。线路数字是走这一段路所需的时间，各段时间相加得到总用时。';
+      if (l.type === 'shortest') hints = [hints[0], '第一段时间短，并不意味着后半程时间短。', hints[2]];
       rules = ['用时按经过的线路数字相加，不按画面上的线长。',
         l.type === 'routes' ? `每份运单都从${name(l.source)}重新出发，各份用时相加。` : `最后一步必须到达${name(l.target)}。`, '先送达并满足时限，再尝试更快的路线。'];
       insight = '总用时最小的完整路线，叫“最短路”。眼前的一段便宜，不代表最后更快。';
       break;
     case 'floyd':
       goal = `允许途经${name(l.stage)}后，选出变快或新接通的所有两站组合`;
-      controls = `比较“原用时”与“经${name(l.stage)}”两段用时之和，点选变快或新接通的组合；再点取消，相等或更慢不选。`;
+      if (l.id === '02-S1.2') goalHighlights = [name(l.stage)];
+      controls = `在右侧方框中操作：比较“原用时”与“经${name(l.stage)}”两段用时之和，点选变快或新接通的组合；再点取消，相等或更慢不选。`;
       rules = [l.stage===0 ? `原来只能直达，不能途经任何其他站。现在只新增${name(l.stage)}作为途中站；所有站一直都能作起点或终点。` : `原来可途经${l.nodes.slice(0,l.stage).map(n=>n.label).join('、')}；现在还可途经${name(l.stage)}。其余站只可作起点或终点。`, '图上数字是直接道路的用时，不是任意绕行的最短用时。“不通”指按当时允许的中转规则无法到达，不代表图上完全没路。', '对照中的两段用时已包括之前开放的中转站。两段相加与原值比较，只记录本轮新增中转带来的改善。'];
       hints = ['先算出每一行经新中转站的两段用时之和。','原来不通的组合，只要两段都能到，就属于新接通。','新站如果就是这组的起点或终点，通常不会因为允许中转而更快。'];
       insight = '每次多允许一个中转站，再更新站点之间的距离，叫“Floyd 算法”；不是挑一个最好的站。';
       break;
     case 'postman':
       goal = `从${name(l.source)}出发，走过全部线路，再回到${name(l.source)}`;
+      goalHighlights = [name(l.source)];
       controls = '依次点击相连的下一站。线路可以重复走；数字是里程，重复经过也会累加。';
       rules = ['所有线路至少经过一次；必须回到起点。', '重复走也会增加里程，但不会直接判错。'];
       hints = ['数一数每个站连着几条线路。', '连着 1、3、5…条线路的站，进出不能全部配成对，需要补走。', '试着把这些站两两连起来补走；比较所有补走路线的总里程。'];
@@ -71,7 +81,7 @@ export function beginnerBrief(l) {
       break;
     case 'mst':
       goal = `选线路接通全部 ${count} 个设施，总造价不超过 ${l.budget}`;
-      controls = '点线路或数字选建，再点取消。数字是造价，已选数字相加；设施可经过其他设施接通。';
+      controls = '点线路数字选建，再次点击将会取消。数字是造价，已选数字相加为总造价；设施可经过其他设施接通。';
       rules = ['只使用选中的线路；任意两处设施都要能沿它们互相到达。', '总造价是选中线路数字之和，不需要把图上所有线路都选上。', '不限制选线顺序；不同的低造价方案都可以通过。'];
       hints = ['先确认有没有设施还没有接上。', '两端已通过其他线路相通时，这条线可能可以省下。', '试着取消一条线路：若仍然全部相通，就不需要花这笔造价。'];
       perfect = l.id === '03-02.2' ? '总造价 8' : l.perfect;
@@ -79,19 +89,19 @@ export function beginnerBrief(l) {
       break;
     case 'topo':
       goal = `排好 ${count} 项任务：箭头前的做完，后面的才能开始`;
-      controls = '按开工顺序点击任务；再点已排任务，会从该处撤回。多个箭头指向同一任务时，前面的都要先完成。';
-      rules = ['A → B 表示 A 做完后才能做 B，不是道路。', '有多个前置任务时，要等它们全部完成。', '没有先后要求的任务可以交换顺序。'];
+      controls = '按照开工顺序点击任务；再次点击已排任务，会从该处撤回。每个任务在开工前都要求它的前置任务全部完成。';
+      rules = ['A → B 表示 A 做完后才能做 B，即 A 是 B 的一项前置任务。', '有多个前置任务时，要等它们全部完成。', '没有先后要求的任务可以交换顺序。'];
       insight = '把所有前置任务放在后续任务之前，叫“拓扑排序”。互不依赖的任务可以换顺序。';
       break;
     case 'cycle':
       goal = '沿箭头找出一圈互相等待的任务，不需要选完所有任务';
       controls = '点击一个任务开始，沿箭头依次选下一项，最后再点起点闭合；中途不能重复任务。';
-      rules = ['A → B 表示 B 必须等 A 完成；箭头不是可双向走的路。', '选出的顺序要闭合，中间不能重复任务。', '只找真正围成一圈的任务，不要把圈外等候的任务也算进去。'];
+      rules = ['A → B 表示 A 做完后才能做 B，即 A 是 B 的一项前置任务。', '选出的顺序要闭合，中间不能重复任务。', '只找真正围成一圈的任务，不要把圈外等候的任务也算进去。'];
       insight = '一圈任务互相等着对方先做，叫“有向环”；圈外等待的任务不一定属于环。';
       break;
     case 'schedule':
       goal = `最多用 ${l.budget} 份加速，让全部任务在 ${l.deadline} 天内完成`;
-      controls = '点任务分配加速：每份缩短 1 天，减到 1 天后再点恢复。箭头前完成后才做后面，不同支线可同时施工。';
+      controls = '点任务分配加速：每次点击缩短 1 天，减到 1 天后再点恢复。箭头前完成后才做后面，不同支线可同时施工。';
       rules = ['每减少 1 天用 1 份加速，单项任务至少需要 1 天。', '箭头前的任务完成后，后面的才能开始；不同支线可以同时施工。', '没有工人数限制；总工期看最后一项何时完成，不把所有天数相加。'];
       insight = '决定最后完工时间的最长任务链，叫“关键路径”。同样长的链有两条时，只加速一条可能没用。';
       break;
@@ -117,7 +127,7 @@ export function beginnerBrief(l) {
       break;
     case 'fault': {
       const object = l.faultKind === 'edge' ? '线路' : '设备';
-      goal = `标出单独停用后，会让网络分成更多片的${object}`;
+      goal = `标出所有单独停用后，会让网络分成更多片的${object}`;
       controls = `切到“停用测试”后点${object}试验，再切回“标记”点选答案。每次测试先恢复原图，测试不会选中答案。`;
       rules = ['每次只停用一个对象，下一次试验先恢复原图。', l.faultKind === 'edge' ? '停线只去掉这条线路，不关闭两端设备。' : '关设备时，它连着的线路一起停用。', '全部标记后点检查；不必按固定顺序测试。'];
       insight = l.faultKind === 'edge' ? '一停用就让网络分成更多片的线路，叫“桥”。' : '一关闭就让剩余网络分成更多片的设备，叫“割点”；线路都有替代路，也可能有这样的设备。';
@@ -125,12 +135,14 @@ export function beginnerBrief(l) {
     }
     case 'isolation':
       goal = `最多关闭 ${l.budget} 台设备，阻止故障从${name(l.source)}传到${name(l.target)}`;
+      goalHighlights = [name(l.source), name(l.target)];
       controls = `点设备选关闭，再点取消；故障开始前，这些设备及关联线路会停用。${name(l.source)}和${name(l.target)}不能关闭。`;
       rules = ['设备在故障开始前就关闭，它连着的线路一起停止传递。', '故障每轮沿线路传到旁边的设备；必须让保护目标一直安全。', '预算可以不用完；同样安全时，受影响设备越少越好。'];
       insight = '隔离要切断从故障起点到保护目标的所有通路；不是每次都关连接最多的设备。';
       break;
     case 'cut':
       goal = `停用线路，让${name(l.source)}无法沿线到达${name(l.target)}`;
+      goalHighlights = [name(l.source), name(l.target)];
       controls = '点线路选停用，再点取消。这次选中的是要断开的线，未选的仍能通行。';
       rules = ['选中的是要停用的线路，其他线路仍然可用。', '断开指定两站就能通关；再尝试少停几条。'];
       insight = '让指定两站断开所需停用的最少线路集合，叫这两站之间的“最小割”。';
@@ -145,5 +157,5 @@ export function beginnerBrief(l) {
   }
   const optimizable = ['forest','mst','shortest','routes','postman','schedule','color','solid','matching','isolation','cut','reinforce'];
   const badge = !l.tutorial && (optimizable.includes(l.type) || l.type === 'broadcast' && !l.fixedSource) ? perfect : '';
-  return {goal,controls,rules,rule:rules.join(' '),insight,hints,perfect,badge};
+  return {goal,goalHighlights,controls,rules,rule:rules.join(' '),insight,hints,perfect,badge};
 }

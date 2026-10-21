@@ -12,7 +12,7 @@ function materialDefs(images = {}, surfaceKey) {
   const mask = images.node_group_mask ? `<mask id="node-group-mask" maskUnits="userSpaceOnUse" x="-68" y="-28" width="136" height="90" mask-type="alpha">${imageLayer('node_group_mask', images, '', -68, -28, 136, 90)}</mask>` : '';
   const surface = images[surfaceKey];
   const patterns = surface ? [-1, ...palette.keys()].map(i => `<pattern id="surface-${i}" width="256" height="256" patternUnits="userSpaceOnUse"><rect width="256" height="256" fill="${i < 0 ? '#edf0e6' : surfaceKey === 'light_panel_gray' ? palette[i] : `url(#pat-${i})`}"/><image href="${escapeHTML(surface)}" width="256" height="256" opacity=".16" style="mix-blend-mode:multiply" aria-hidden="true"/></pattern>`).join('') : '';
-  return `<defs>${mask}${patterns}<filter id="selection-tint"><feFlood flood-color="#628e94"/><feComposite in2="SourceAlpha" operator="in"/></filter></defs>`;
+  return `<defs>${mask}${patterns}<filter id="symbol-white"><feFlood flood-color="#fff"/><feComposite in2="SourceAlpha" operator="in"/></filter></defs>`;
 }
 function surfaceFill(color, images, key) {
   return images?.[key] ? `url(#surface-${color})` : color < 0 ? '#e1e7de' : `url(#pat-${color})`;
@@ -63,7 +63,8 @@ export function edgeGeometry(l, e) {
   const task = ['topo', 'cycle', 'schedule'].includes(l.type);
   const endpoint = (node, toward) => {
     const vx = toward.x - node.x, vy = toward.y - node.y;
-    const scale = task ? Math.min(60 / Math.abs(vx), 40 / Math.abs(vy)) : 34 / Math.hypot(vx, vy);
+    // Terminate underneath each plate so rounded/cut corners cannot expose a gap.
+    const scale = task ? Math.min(52 / Math.abs(vx), 28 / Math.abs(vy)) : 22 / Math.hypot(vx, vy);
     return {x: node.x + vx * scale, y: node.y + vy * scale};
   };
   const control = bend ? {x: bend[0], y: bend[1]} : null;
@@ -94,7 +95,7 @@ function graphBoard(l, s, ui = {}) {
     const hasRoadTexture = Boolean(ui.images?.road_strip) && !l.directed && !['topo', 'cycle', 'schedule', 'matching', 'floyd'].includes(l.type) && !geometry.control;
     const roadTexture = hasRoadTexture ? `<image class="edge-asset" href="${escapeHTML(ui.images.road_strip)}" x="${geometry.start.x}" y="${geometry.start.y - 16}" width="${geometry.length}" height="32" preserveAspectRatio="none" transform="rotate(${Math.atan2(geometry.end.y - geometry.start.y, geometry.end.x - geometry.start.x) * 180 / Math.PI} ${geometry.start.x} ${geometry.start.y})" aria-hidden="true"/>` : '';
     const arrowPoint = geometry.point(.68), arrowPointNext = geometry.point(.72), arrowAngle = Math.atan2(arrowPointNext.y - arrowPoint.y, arrowPointNext.x - arrowPoint.x) * 180 / Math.PI;
-    const directionArrow = l.directed ? `${ui.images?.road_arrow ? `<circle class="direction-arrow-plate" cx="${arrowPoint.x}" cy="${arrowPoint.y}" r="11"/>` : ''}${imageLayer('road_arrow', ui.images, 'direction-arrow', arrowPoint.x - 13, arrowPoint.y - 13, 26, 26, `transform="rotate(${arrowAngle} ${arrowPoint.x} ${arrowPoint.y})"`)}` : '';
+    const directionArrow = l.directed ? `${ui.images?.road_arrow ? `<circle class="direction-arrow-plate" cx="${arrowPoint.x}" cy="${arrowPoint.y}" r="15"/>` : ''}${imageLayer('road_arrow', ui.images, 'direction-arrow', arrowPoint.x - 19, arrowPoint.y - 19, 38, 38, `transform="rotate(${arrowAngle} ${arrowPoint.x} ${arrowPoint.y})"`)}` : '';
     const hoverFlow = editable ? `<path class="edge-hover-flow" d="${geometry.d}" pathLength="100" aria-hidden="true"/>` : '';
     const costTag = weighted && (l.type !== 'reinforce' || e.candidate) ? roadWeight(mx,my,e.w??1) : '';
     return `<g class="${cls}" ${editable ? `data-edge="${i}" role="button" tabindex="0" aria-label="${escapeHTML(a.label + "至" + b.label)}${weighted ? "，" + (e.w ?? 1) : ""}" aria-pressed="${selected}"` : ""}><title>${escapeHTML(a.label + "—" + b.label)}</title><path class="edge-bed" d="${geometry.d}"/>${roadTexture}<path class="edge-selection-rim" d="${geometry.d}"/>${editable ? `<path class="edge-hit" d="${geometry.d}"/>` : ""}<path class="edge-line" d="${geometry.d}" ${l.directed && !ui.images?.road_arrow ? 'marker-end="url(#direction)"' : ''}/>${hoverFlow}${directionArrow}${costTag}${l.type === "postman" && walked.filter((j) => j === i).length > 1 ? `<text class="repeat-label" x="${mx + 28}" y="${my - 8}">×${walked.filter((j) => j === i).length}</text>` : ""}</g>`;
@@ -123,11 +124,9 @@ function graphBoard(l, s, ui = {}) {
     const groupBadge = s.labels[i] >= 0 ? facility
       ? `<g class="station-group-badge" transform="translate(-37 -34)"><circle r="14"/><text class="group-number" y="5">${s.labels[i] + 1}</text></g>`
       : `<text class="group-number" x="0" y="5">${s.labels[i] + 1}</text>` : '';
-    const status = conflict ? 'node_conflict' : selected || active || current ? 'node_highlight' : visited || lit ? 'node_complete' : null;
-    const statusLayer = status === 'node_highlight'
-      ? imageLayer(status, ui.images, 'station-status status-highlight', -67, -69, 134, 134, 'filter="url(#selection-tint)"')
-      : status ? `<circle class="station-status-plate status-${status.replace('node_', '')}" cx="39" cy="-43" r="15"/>${imageLayer(status, ui.images, `station-status status-${status.replace('node_', '')}`, 25, -57, 28, 28)}` : '';
-    const sourceLayer = l.type === 'broadcast' && i === s.source ? `<circle class="station-source-plate" cx="37" cy="-38" r="18"/>${imageLayer('source_marker', ui.images, 'station-source-marker', 1, -74, 72, 72)}` : '';
+    const status = conflict ? 'node_conflict' : selected || active || current ? null : visited || lit ? 'node_complete' : null;
+    const statusLayer = status && ui.images?.[status] ? `<circle class="station-status-plate status-${status.replace('node_', '')}" cx="39" cy="-43" r="16"/>${imageLayer(status, ui.images, `station-status status-${status.replace('node_', '')}`, 22, -60, 34, 34)}` : '';
+    const sourceLayer = l.type === 'broadcast' && i === s.source && ui.images?.source_marker ? `<g class="station-source" transform="translate(37 -38)"><rect class="station-source-plate" x="-30" y="-20" width="60" height="40" rx="10"/>${imageLayer('source_marker', ui.images, 'station-source-marker', -28, -28, 56, 56)}</g>` : '';
     const dispatchX = n.x > 800 ? -130 : 30;
     const dispatchLayer = current ? `<g class="station-dispatch"><rect class="dispatch-plate" x="${dispatchX - 4}" y="-69" width="108" height="50" rx="24"/>${imageLayer('A06', ui.images, 'station-dispatch-asset', dispatchX, -96, 100, 100)}</g>` : '';
     const assetLayer = facility ? imageLayer(facility, ui.images, 'station-asset', -64, -66, 128, 128) : '';
