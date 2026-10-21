@@ -1,0 +1,9 @@
+# 镜像只需要 Dockerfile 里 COPY 的几个运行文件；本地数据、日志和部署配置不要带进构建上下文
+data/
+logs/
+*.log
+*.env
+run-user.sh
+tideweave-sync.service
+speedtest.html
+README.md

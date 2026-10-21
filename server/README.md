@@ -25,6 +25,27 @@ node server/index.mjs
 | `TRUST_PROXY` | `0` | 前面有 nginx、Caddy 这类转发服务时设为 `1`，按 `X-Forwarded-For` 认客户端 IP |
 | `MIN_FREE_MB` | `500` | 磁盘剩余低于这个值时拒绝新建同步码 |
 
+## 用 Docker 部署
+
+仓库根目录的 `compose.yaml` 用 `server/Dockerfile` 构建镜像，运行同步服务并顺带托管网页版：
+
+```bash
+npm run build            # 先把网页版构建到 dist/
+docker compose up -d     # 构建镜像并后台启动，浏览器打开 http://<服务器>:8080/
+docker compose logs -f   # 看日志，每个请求一行 JSON
+docker compose exec sync node server/admin.mjs stats   # 运维脚本照常可用
+docker compose down      # 停止；数据留在卷 sync-data 里（down -v 会连数据一起删）
+```
+
+- 镜像基于 `node:22-alpine`，约 164 MB，只放 `index.mjs`、`store.mjs`、`admin.mjs`、`http-range.cjs` 四个文件。服务端没有第三方依赖，不需要 `npm install`。
+- 以非 root 用户 `node` 运行，只能写数据目录 `/data`；网页目录 `/srv/www` 是只读挂载。
+- 自带健康检查（`/api/v1/health`）；`docker stop` 时服务先关闭再退出，不会等到被强制结束。
+- 只要同步接口、不托管网页时，删掉 `compose.yaml` 里的 `STATIC_DIR` 和 `./dist` 挂载即可。线上用压缩过图片和音频的网页目录时，把 `./dist` 换成那个目录。
+- 环境变量同上表，在 `compose.yaml` 的 `environment` 里改。
+- 注意：Docker 发布的端口会绕过 ufw 防火墙，`ports` 里写了的端口对外直接可见。
+
+10/21 在本机（Docker 29.9）实测：健康检查为 healthy；首页、音频分段读取（206）正常；新建、读取同步码正常；运维脚本可用；`docker stop` 立即退出，退出码 0；删掉容器重建后数据还在；浏览器里游戏正常打开，控制台无报错。线上 VPS 目前仍用下面的 `run-user.sh` 方式运行，没有改成 Docker：部署账号 `agent` 不在 docker 组里，没有权限使用 Docker。
+
 ## 部署到国内服务器
 
 前提：服务器能用 SSH 公钥登录，登录用户有 sudo 权限；安全组放行 TCP 22 和对外端口（默认 8080）。下面的命令在服务器上执行，除非特别说明。
