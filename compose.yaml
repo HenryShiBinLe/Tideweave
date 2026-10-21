@@ -1,24 +1,23 @@
-# 用 Docker 运行 Tideweave 云同步服务，并顺带托管网页版。说明见 server/README.md 的“用 Docker 部署”。
+# 用 Docker 运行 Tideweave（云同步服务 + 网页版）。服务器上只需要这一个文件，不需要源码，也不需要登录。说明见 server/README.md 的“用 Docker 部署”。
 #
-#   npm run build            # 先构建网页版到 dist/（只要同步接口、不托管网页时可以跳过，并删掉下面的 STATIC_DIR 和 dist 挂载）
-#   docker compose up -d     # 构建镜像并后台启动，浏览器打开 http://<服务器>:8080/
+#   docker compose up -d     # 拉取镜像并后台启动，浏览器打开 http://<服务器>:8080/
 #   docker compose logs -f   # 看日志（每个请求一行 JSON）
+#   docker compose pull && docker compose up -d   # 更新到新镜像
 #   docker compose down      # 停止；同步数据在卷 sync-data 里，不会删（docker compose down -v 才会连数据一起删）
+#
+# 不想拉取、要从源码构建时，见 server/Dockerfile 开头的说明。
 services:
-  sync:
-    build: ./server
-    image: tideweave-sync
+  tideweave:
+    image: ghcr.io/henryshibinle/tideweave:0.1.0
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      STATIC_DIR: /srv/www
       # 前面有 nginx、Caddy 这类转发服务时打开，按 X-Forwarded-For 认客户端 IP
       # TRUST_PROXY: "1"
+      MIN_FREE_MB: "500"
     volumes:
       - sync-data:/data
-      # 网页版目录，只读挂载。线上部署时可以换成压缩过图片和音频的目录
-      - ./dist:/srv/www:ro
 
 volumes:
   sync-data:

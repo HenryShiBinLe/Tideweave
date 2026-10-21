@@ -27,24 +27,29 @@ node server/index.mjs
 
 ## 用 Docker 部署
 
-仓库根目录的 `compose.yaml` 用 `server/Dockerfile` 构建镜像，运行同步服务并顺带托管网页版：
+发布的镜像是 `ghcr.io/henryshibinle/tideweave`：同步服务 + 网页版（图片和音频按部署方式压缩过），同时提供 x86 和 ARM 两种架构，标签为版本号（如 `0.1.0`）和 `latest`。镜像是公开的，拉取不需要登录。服务器上只需要 Docker 和仓库根目录的 `compose.yaml` 这一个文件，不需要源码和 Node：
 
 ```bash
-npm run build            # 先把网页版构建到 dist/
-docker compose up -d     # 构建镜像并后台启动，浏览器打开 http://<服务器>:8080/
+docker compose up -d     # 拉取镜像并后台启动，浏览器打开 http://<服务器>:8080/
 docker compose logs -f   # 看日志，每个请求一行 JSON
-docker compose exec sync node server/admin.mjs stats   # 运维脚本照常可用
+docker compose exec tideweave node server/admin.mjs stats   # 运维脚本照常可用
+docker compose pull && docker compose up -d                 # 更新到新镜像
 docker compose down      # 停止；数据留在卷 sync-data 里（down -v 会连数据一起删）
 ```
 
-- 镜像基于 `node:22-alpine`，约 164 MB，只放 `index.mjs`、`store.mjs`、`admin.mjs`、`http-range.cjs` 四个文件。服务端没有第三方依赖，不需要 `npm install`。
-- 以非 root 用户 `node` 运行，只能写数据目录 `/data`；网页目录 `/srv/www` 是只读挂载。
+- 镜像基于 `node:22-alpine`，约 170 MB，其中网页版约 6 MB。服务端没有第三方依赖，镜像里只有 `index.mjs`、`store.mjs`、`admin.mjs`、`http-range.cjs` 四个文件和网页目录 `/srv/www`。
+- 以非 root 用户 `node` 运行，只能写数据目录 `/data`；网页文件归 root 所有，服务进程只能读。
 - 自带健康检查（`/api/v1/health`）；`docker stop` 时服务先关闭再退出，不会等到被强制结束。
-- 只要同步接口、不托管网页时，删掉 `compose.yaml` 里的 `STATIC_DIR` 和 `./dist` 挂载即可。线上用压缩过图片和音频的网页目录时，把 `./dist` 换成那个目录。
 - 环境变量同上表，在 `compose.yaml` 的 `environment` 里改。
 - 注意：Docker 发布的端口会绕过 ufw 防火墙，`ports` 里写了的端口对外直接可见。
 
-10/21 在本机（Docker 29.9）实测：健康检查为 healthy；首页、音频分段读取（206）正常；新建、读取同步码正常；运维脚本可用；`docker stop` 立即退出，退出码 0；删掉容器重建后数据还在；浏览器里游戏正常打开，控制台无报错。线上 VPS 目前仍用下面的 `run-user.sh` 方式运行，没有改成 Docker：部署账号 `agent` 不在 docker 组里，没有权限使用 Docker。
+从源码构建（不拉取）：`server/Dockerfile` 有两个构建目标，开头注释里有命令。默认目标只有同步服务；`full` 目标通过构建上下文 `web` 打进任意一个构建好的网页目录，例如 `docker build --target full --build-context web=dist -t tideweave server`。
+
+验证记录：
+- 10/21 本机（Docker 29.9）测试只有同步服务的镜像：健康检查为 healthy；首页、音频分段读取（206）正常；新建、读取同步码正常；运维脚本可用；`docker stop` 立即退出，退出码 0；删掉容器重建后数据还在；浏览器里游戏正常打开。
+- 同日测试带网页版的镜像：加载的是压缩后的图片和音频，带哈希的文件缓存一年，服务进程写不了网页目录，浏览器里没有失败的请求，控制台无报错。x86 和 ARM 两种架构都能构建。
+- 同日推送镜像（`0.1.0`、`latest`，x86 和 ARM 两种架构）后，模拟一台新服务器测试：用不带任何登录信息的 Docker 配置，在只放了 `compose.yaml` 的空目录里 `docker compose up -d`，镜像自动拉取并启动；健康检查、首页、音频分段读取、新建和读取同步码都正常，浏览器里游戏正常打开、无报错。x86 版在 Mac 上用模拟运行也通过了健康检查。
+- 线上 VPS 目前仍用下面的 `run-user.sh` 方式运行，没有改成 Docker：部署账号 `agent` 不在 docker 组里，没有权限使用 Docker。
 
 ## 部署到国内服务器
 

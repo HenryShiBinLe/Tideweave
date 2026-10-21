@@ -56,7 +56,7 @@ npm run preview     # 本机 HTTP 预览网页版
 | Windows 程序目录 | `npm run package` | 产物在 `release/windows/Tideweave-win32-x64/`；Mac 上也能打 |
 | Windows 安装包 | 在 Windows 上用 Inno Setup 编译 `desktop/installer/Tideweave.iss` | 见 [desktop/README.md](desktop/README.md) |
 | Mac App / 安装镜像 | `npm run package:mac` / `npm run dmg:mac` | 只需 Xcode 命令行工具 |
-| 云同步服务 + 网页版 | `docker compose up -d`，或见 [server/README.md](server/README.md) | 根目录 `compose.yaml`，镜像由 `server/Dockerfile` 构建 |
+| 云同步服务 + 网页版 | `docker compose up -d`，或见 [server/README.md](server/README.md) | 根目录 `compose.yaml` 拉取镜像 `ghcr.io/henryshibinle/tideweave`，服务器上不需要源码 |
 
 UI 验证脚本（Playwright）：`npm run verify:ui`，以及 `scripts/verify-*.mjs`。
 
