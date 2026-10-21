@@ -1,7 +1,7 @@
 import { levels, levelById, legacyLevelById } from "./levels.mjs";
 import { initialState, evaluate } from "./engine.mjs";
 import { walkEdges } from "./algorithms.mjs";
-const fresh = () => ({ version: 1, records: {}, last: levels[0].id, chapter: 1, summaries: [], briefings: [], settings: { sound: true, volume: 1, effectsVolume: 1, music: true, musicVolume: .5, motion: true, speed: 1 } });
+const fresh = () => ({ version: 1, records: {}, last: levels[0].id, chapter: 1, summaries: [], briefings: [], settings: { sound: true, volume: .8, effectsVolume: .5, music: true, musicVolume: .5, motion: true, speed: 1 } });
 function cleanState(l, value) {
   const s = initialState(l);
   if (!value || typeof value !== "object") return s;

@@ -3,8 +3,8 @@ import {createBrowserOutput} from './audio-output.mjs';
 export const audioFiles = {
   music: 'assets/audio/bgm_grid_logic_mix.mp3',
   click: 'assets/audio/sfx_click.wav',
-  clear: 'assets/audio/sfx_clear.wav',
-  medal: 'assets/audio/sfx_medal.wav',
+  clear: 'assets/audio/sfx_medal.wav',
+  medal: 'assets/audio/sfx_clear.wav',
 };
 
 export const clickActions = new Set(['resume', 'deploy', 'run', 'confirm-reset', 'continue', 'ack-briefing', 'next-chapter']);
@@ -20,7 +20,7 @@ export class GameAudio {
     this.cancel = cancel;
     this.createOutput = createOutput;
     this.output = null;
-    this.settings = { sound: true, volume: 1, effectsVolume: 1, music: true, musicVolume: .5 };
+    this.settings = { sound: true, volume: .8, effectsVolume: .5, music: true, musicVolume: .5 };
     this.pending = new Set();
     this.broken = new Set();
     this.active = false;
@@ -49,8 +49,8 @@ export class GameAudio {
   configure(settings) {
     this.settings = {
       sound: settings.sound !== false,
-      volume: clamp(settings.volume, 1),
-      effectsVolume: clamp(settings.effectsVolume, 1),
+      volume: clamp(settings.volume, .8),
+      effectsVolume: clamp(settings.effectsVolume, .5),
       music: settings.music !== false,
       musicVolume: clamp(settings.musicVolume, .5),
     };
@@ -94,8 +94,7 @@ export class GameAudio {
 
   get musicCeiling() {
     const name = this.activeEffect;
-    // Medal celebrations keep the music fader unchanged. The output bus handles peaks.
-    return this.masterGain * this.settings.musicVolume * (name === 'clear' ? .3 : 1);
+    return this.masterGain * this.settings.musicVolume * (name === 'clear' || name === 'medal' ? .65 : 1);
   }
 
   limitMusic() {
