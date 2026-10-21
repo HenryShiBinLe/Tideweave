@@ -43,13 +43,14 @@ if(!await exists(path.join(root,'dist','index.html')))throw new Error('缺少 di
 const stage=path.join(out,'.stage');
 await fs.rm(stage,{recursive:true,force:true});
 await fs.mkdir(path.join(stage,'desktop'),{recursive:true});
-await fs.cp(path.join(root,'win'),path.join(stage,'win'),{recursive:true,filter:src=>!src.endsWith('package.mjs')});
+// 只放运行时需要的 .cjs；打包脚本、图标、安装脚本、说明不进安装包
+await fs.cp(path.join(root,'win'),path.join(stage,'win'),{recursive:true,filter:src=>src===path.join(root,'win')||src.endsWith('.cjs')});
 await fs.copyFile(path.join(root,'desktop','storage.cjs'),path.join(stage,'desktop','storage.cjs'));
 await fs.cp(path.join(root,'dist'),path.join(stage,'dist'),{recursive:true});
 await fs.writeFile(path.join(stage,'package.json'),JSON.stringify({name:pkg.name,version:pkg.version,description:pkg.description,main:'win/main.cjs',private:true},null,2));
 
 // 3. 打包（packager 下载 win32-x64 的 Electron，缓存在本机；写 exe 文件信息用的是纯 JS 的 resedit，Mac 上不需要 Wine）
-const [dir]=await packager({dir:stage,out,name:'Tideweave',platform:'win32',arch:'x64',electronVersion,asar:true,prune:false,overwrite:true,
+const [dir]=await packager({dir:stage,out,name:'Tideweave',platform:'win32',arch:'x64',electronVersion,asar:true,icon:path.join(root,'win','Tideweave.ico'),prune:false,overwrite:true,
   win32metadata:{CompanyName:'Tideweave Project',FileDescription:'Tideweave - Graph Puzzle (Cloud Sync)',ProductName:'Tideweave',InternalName:'Tideweave'}});
 await fs.rm(stage,{recursive:true,force:true});
 
