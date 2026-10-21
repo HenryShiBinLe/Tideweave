@@ -138,6 +138,9 @@ try {
   const roadBefore = await counts();
   await page.locator('.station-body').first().click({force: true});
   assert.deepEqual(await counts(), roadBefore, 'noninteractive station emits no edit sound');
+  // 点击音有 85 ms 防连响（src/audio.mjs 的 click()）：紧跟在“出发”后面的编辑会被当成连点吞掉。
+  // 机器快时（10/21 Mac 上）道路点击落在这 85 ms 里，所以先等过这段时间再点
+  await page.waitForTimeout(150);
   await page.locator('[data-edge="0"]').click();
   assert.equal((await counts())['sfx_click.wav'], roadBefore['sfx_click.wav'] + 1, 'a road edit emits exactly one click');
   await page.locator('[data-action="undo"]').click();
