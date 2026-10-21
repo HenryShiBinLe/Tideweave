@@ -97,6 +97,15 @@ coverage/
 docs-0/
 
 # ===== 运行时数据（存档 / 端口信息）=====
-/data/
+# 游戏开发版、archive/test1 的 GraphLab 都在各自目录下写 data/
+data/
+
+# ===== 游戏构建、发布与验证产物（原 Tideweave/.gitignore）=====
+/release/
+/work/
+/verification/
+*token*.txt
+*secret*.txt
+credentials*.json
 
 .obsidian/
