@@ -64,7 +64,7 @@ const settled = async () => { await Promise.resolve(); await Promise.resolve(); 
 test('old saves retain mute and volume while gaining local music defaults', () => {
   const old = { ...fresh(), settings: { sound: false, volume: 0, motion: false, speed: 2 } };
   const loaded = normalize(old);
-  assert.deepEqual(loaded.settings, { sound: false, volume: 0, effectsVolume: 1, music: true, musicVolume: .5, motion: false, speed: 2 });
+  assert.deepEqual(loaded.settings, { sound: false, volume: 0, effectsVolume: .5, music: true, musicVolume: .5, motion: false, speed: 2 });
   assert.deepEqual(normalize(loaded), loaded);
   const changed = normalize({ ...fresh(), settings: { music: false, musicVolume: 5, volume: -4, speed: 4 } });
   assert.equal(changed.settings.music, false);
@@ -72,13 +72,28 @@ test('old saves retain mute and volume while gaining local music defaults', () =
   assert.equal(changed.settings.volume, 0);
   assert.equal(changed.settings.speed, 3);
   assert.equal(normalize({ ...fresh(), settings: { musicVolume: NaN } }).settings.musicVolume, .5);
-  assert.equal(fresh().settings.volume, 1);
+  assert.equal(fresh().settings.volume, .8);
+  for (const [value, expected] of [[undefined, .8], [NaN, .8], ['0.2', .8], [0, 0], [.3, .3], [1, 1]]) {
+    assert.equal(normalize({...fresh(), settings: {volume: value}}).settings.volume, expected);
+  }
+  assert.equal(fresh().settings.effectsVolume, .5);
   assert.equal(fresh().settings.musicVolume, .5);
   assert.equal(normalize({...fresh(), settings: {musicVolume: .8}}).settings.musicVolume, .8);
-  for (const [value, expected] of [[.35, .35], [0, 0], [-1, 0], [4, 1], [NaN, 1], ['0.2', 1]]) {
+  for (const [value, expected] of [[.35, .35], [.7, .7], [1, 1], [0, 0], [-1, 0], [4, 1], [NaN, .5], ['0.2', .5]]) {
     const save = normalize({...fresh(), settings: {effectsVolume: value}});
     assert.equal(save.settings.effectsVolume, expected);
     assert.deepEqual(normalize(save), save);
+  }
+});
+
+test('audio configuration uses 80/50/50 defaults for missing or invalid volume values', t => {
+  const {audio} = rig(t);
+  for (const settings of [{}, {volume: NaN, effectsVolume: '0.7', musicVolume: undefined}]) {
+    audio.configure(settings);
+    assert.equal(audio.settings.volume, .8);
+    assert.equal(audio.settings.effectsVolume, .5);
+    assert.equal(audio.settings.musicVolume, .5);
+    assert.ok(Object.values(audio.effects).every(media => Math.abs(media.volume - Math.sqrt(.8) * .5) < .0001));
   }
 });
 
@@ -101,21 +116,22 @@ test('effects and music have independent faders under the existing master volume
   audio.configure({...settings, volume: .09});
   assert.ok(Math.abs(audio.effects.medal.volume - .12) < .0001);
   advance(2500);
-  assert.ok(Math.abs(audio.music[0].volume - .21) < .0001);
+  assert.ok(audio.music[0].volume > .21 * .8, 'music recovers smoothly after a reward');
+  assert.ok(audio.music[0].volume < .21, 'music recovery does not exceed the configured level');
 });
 
 test('muting effects stops a reward, restores music and does not queue later cues', async t => {
   const {audio, advance} = rig(t);
   audio.activate(); await settled(); advance(2500);
   audio.result({pass: true, perfect: false}); await settled(); advance(100);
-  assert.ok(audio.music[0].volume < .2);
+  assert.ok(Math.abs(audio.music[0].volume - Math.sqrt(.8) * .5 * .65) < .0001);
   audio.configure({...fresh().settings, effectsVolume: 0});
   assert.ok(Object.values(audio.effects).every(media => media.paused));
   assert.equal(audio.activeEffect, null);
   const plays = Object.values(audio.effects).map(media => media.plays);
   audio.click(); audio.result({pass: true}); audio.result({pass: true, perfect: true});
   advance(2500);
-  assert.ok(audio.music[0].volume > .499);
+  assert.ok(Math.abs(audio.music[0].volume - Math.sqrt(.8) * .5) < .0001);
   assert.deepEqual(Object.values(audio.effects).map(media => media.plays), plays);
   audio.configure(fresh().settings); await settled();
   assert.deepEqual(Object.values(audio.effects).map(media => media.plays), plays);
@@ -142,6 +158,8 @@ test('master mute and zero volume silence all channels; music can be disabled in
 
 test('failures stay quiet and a perfect pass plays only the medal cue', async t => {
   const { audio, advance } = rig(t);
+  assert.equal(audio.effects.clear.src, 'assets/audio/sfx_medal.wav');
+  assert.equal(audio.effects.medal.src, 'assets/audio/sfx_clear.wav');
   audio.activate(); advance(1200); await settled();
   const bed = audio.music[0].volume;
   audio.result({ pass: false });
@@ -149,26 +167,27 @@ test('failures stay quiet and a perfect pass plays only the medal cue', async t 
   audio.result({ pass: true, perfect: false }); await settled();
   assert.equal(audio.effects.clear.plays, 1);
   advance(500);
-  assert.ok(audio.music[0].volume < bed * .4, 'ordinary clear still ducks the music');
+  assert.ok(Math.abs(audio.music[0].volume / bed - .65) < .001, 'ordinary clear retains 65% of the music');
   advance(2500);
   audio.result({ pass: true, perfect: true }); await settled();
   assert.equal(audio.effects.medal.plays, 1);
   assert.ok(audio.effects.clear.paused);
   advance(500);
-  assert.ok(audio.music[0].volume >= bed * .99, 'medal does not duck the music');
+  assert.ok(Math.abs(audio.music[0].volume / bed - .65) < .001, 'medal retains 65% of the music');
   advance(2500);
   assert.ok(audio.music[0].volume > bed * .95, 'music recovers after the cue');
 });
 
 test('click bursts reuse one channel and media retain their calibrated levels before output gain', async t => {
   const { audio, advance } = rig(t);
+  audio.configure({...fresh().settings, volume: 1, effectsVolume: 1});
   audio.activate(); await settled();
   audio.click(); await settled(); audio.click();
   assert.equal(audio.effects.click.plays, 1);
   advance(100); audio.click(); await settled();
   assert.equal(audio.effects.click.plays, 2);
   assert.equal(audio.effects.click.currentTime, 0);
-  const peakDb = { click: -6.1, clear: -3, medal: -4.93 };
+  const peakDb = { click: -6.1, clear: -4.93, medal: -3 };
   for (const [name, peak] of Object.entries(peakDb)) {
     const renderedPeak = peak + 20 * Math.log10(audio.effects[name].volume);
     assert.ok(renderedPeak <= -3 && renderedPeak >= -6.2, `${name} plays at its calibrated level`);
@@ -190,23 +209,28 @@ test('page changes and repeated settings application keep music position and a s
   assert.ok(audio.music[0].volume > 0 && audio.music[0].volume < 1);
 });
 
-test('medal keeps the music fader unchanged, including during settings refresh and crossfade', async t => {
+for (const name of ['clear', 'medal']) test(`${name} ducks music through settings refresh and crossfade, then recovers`, async t => {
   const { audio, advance } = rig(t);
   audio.configure({ ...fresh().settings, volume: 1, musicVolume: 1 });
   audio.activate(); await settled(); advance(2000);
   const before = audio.music[0].volume;
-  audio.result({pass: true, perfect: true}); await settled();
-  assert.equal(audio.music[0].volume, before);
-  audio.configure({...fresh().settings, musicVolume: 1});
+  audio.result({pass: true, perfect: name === 'medal'}); await settled();
+  assert.ok(Math.abs(audio.music[0].volume / before - .65) < .001);
+  assert.equal(audio.effects[name].volume, .5);
+  audio.configure({...fresh().settings, volume: 1, musicVolume: 1});
   advance(400);
-  assert.ok(audio.music[0].volume >= before);
+  assert.ok(Math.abs(audio.music[0].volume / before - .65) < .001);
   audio.music[0].currentTime = 174.5;
   advance(100); await settled(); advance(300);
   assert.ok(audio.music.every(media => !media.paused));
-  assert.ok(audio.music.reduce((sum, media) => sum + media.volume, 0) >= before);
+  const ducked = audio.music.reduce((sum, media) => sum + media.volume, 0);
+  assert.ok(Math.abs(ducked / before - .65) < .001);
   const clicks = audio.effects.click.plays;
   advance(100); audio.click();
   assert.equal(audio.effects.click.plays, clicks, 'clicks do not pile on a reward');
+  advance(2500);
+  assert.equal(audio.activeEffect, null);
+  assert.ok(audio.music.reduce((sum, media) => sum + media.volume, 0) > before * .99);
 });
 
 test('one output bus serves all media and is reused on gestures and settings changes', async t => {

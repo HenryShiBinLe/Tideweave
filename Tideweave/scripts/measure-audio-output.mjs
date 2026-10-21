@@ -2,13 +2,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+import {audioFiles} from '../src/audio.mjs';
 
 // Render the production bus in Chromium; the optional FFmpeg check measures true peaks.
 export async function measureAudioOutput(page, root, fixture) {
   await fs.copyFile(path.join(root, 'src/audio-output.mjs'), path.join(fixture, 'dist/check-audio-output.mjs'));
   const encoded = {};
-  for (const [name, file] of Object.entries({music: 'bgm_grid_logic_mix.mp3', click: 'sfx_click.wav', clear: 'sfx_clear.wav', medal: 'sfx_medal.wav'})) {
-    encoded[name] = (await fs.readFile(path.join(root, 'assets/audio', file))).toString('base64');
+  for (const [name, file] of Object.entries(audioFiles)) {
+    encoded[name] = (await fs.readFile(path.join(root, file))).toString('base64');
   }
   await page.evaluate(async encoded => {
     const context = new OfflineAudioContext(2, 1, 48000);
@@ -31,7 +32,7 @@ export async function measureAudioOutput(page, root, fixture) {
       const cues = [[10, 'click'], [20, 'click'], [30, 'click'], [45, 'clear'], [60, 'click'], [90, 'medal'], [110, 'click'], [140, 'click']];
       for (const [time, name] of cues) {
         const source = context.createBufferSource(); source.buffer = decoded[name]; source.connect(output); source.start(time);
-        const gain = name === 'clear' ? .3 : 1;
+        const gain = name === 'clear' || name === 'medal' ? .65 : 1;
         musicGain.gain.setValueAtTime(gain, time);
         musicGain.gain.setTargetAtTime(1, time + decoded[name].duration, .18);
       }

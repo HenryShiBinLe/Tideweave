@@ -96,8 +96,8 @@ try {
   await page.waitForSelector('dialog[open]');
   assert.equal((await counts())['sfx_click.wav'], 0, 'opening settings is quiet');
   assert.equal(await page.locator('dialog [data-setting]').count(), 6);
-  assert.equal(await page.locator('[data-setting="volume"]').inputValue(), '1');
-  assert.equal(await page.locator('[data-setting="effectsVolume"]').inputValue(), '1');
+  assert.equal(await page.locator('[data-setting="volume"]').inputValue(), '0.8');
+  assert.equal(await page.locator('[data-setting="effectsVolume"]').inputValue(), '0.5');
   assert.equal(await page.locator('[data-setting="musicVolume"]').inputValue(), '0.5');
   for (const setting of ['volume', 'effectsVolume', 'musicVolume']) assert.equal(await page.locator(`[data-setting="${setting}"]`).getAttribute('step'), '.01');
   assert.ok(await page.evaluate(time => window.__audio[0].currentTime >= time && window.__audio.length === 5, beforeTime));
@@ -150,23 +150,39 @@ try {
   await page.locator('[data-action="run"]').click();
   await page.waitForFunction(() => document.querySelector('dialog h2')?.textContent === '联运有序');
   const medalAfter = await counts();
-  assert.equal(medalAfter['sfx_medal.wav'], medalBefore['sfx_medal.wav'] + 1);
-  assert.equal(medalAfter['sfx_clear.wav'], medalBefore['sfx_clear.wav']);
+  assert.equal(medalAfter['sfx_clear.wav'], medalBefore['sfx_clear.wav'] + 1);
+  assert.equal(medalAfter['sfx_medal.wav'], medalBefore['sfx_medal.wav']);
   await page.waitForFunction(() => window.__medalMusic.length >= 15);
-  const medalMusicMinimum = await page.evaluate(() => {clearInterval(window.__medalSampler); return Math.min(...window.__medalMusic);});
-  assert.ok(medalMusicMinimum >= musicBeforeMedal * .999, 'medal keeps BGM fader steady throughout playback');
-  report.medalKeepsMusic = true;
+  const medalMusic = await page.evaluate(() => {clearInterval(window.__medalSampler); return window.__medalMusic;});
+  assert.ok(medalMusic.every(gain => Math.abs(gain / musicBeforeMedal - .65) < .002), 'medal retains 65% of BGM during playback');
+  await page.waitForFunction(before => window.__audio[4].paused && window.__audio[0].volume + window.__audio[1].volume >= before * .99, musicBeforeMedal);
+  report.medalDucksMusic = true;
+  report.medalMusicRecovers = true;
   await page.locator('dialog [data-action="close"]').last().click();
   await page.locator('[data-action="replay"]').click();
   await page.waitForFunction(() => document.querySelector('[data-action="pause"]')?.title === '播放');
-  assert.equal((await counts())['sfx_medal.wav'], medalAfter['sfx_medal.wav'], 'replay does not award sound');
+  assert.equal((await counts())['sfx_clear.wav'], medalAfter['sfx_clear.wav'], 'replay does not award sound');
 
   await uiClick(page, '[data-level="03-03.1"]');
+  await page.waitForFunction(() => window.__audio[0].volume + window.__audio[1].volume > Math.sqrt(.3) * .35 * .999);
+  const musicBeforeClear = await page.evaluate(() => {
+    window.__clearMusic = [];
+    window.__clearSampler = setInterval(() => {
+      if (!window.__audio[3].paused) window.__clearMusic.push(window.__audio[0].volume + window.__audio[1].volume);
+    }, 20);
+    return window.__audio[0].volume + window.__audio[1].volume;
+  });
   const clearBefore = await counts();
   await page.locator('[data-action="run"]').click();
   await page.waitForFunction(() => document.querySelector('dialog h2')?.textContent === '设施恢复');
-  assert.equal((await counts())['sfx_clear.wav'], clearBefore['sfx_clear.wav'] + 1);
-  assert.equal((await counts())['sfx_medal.wav'], clearBefore['sfx_medal.wav']);
+  assert.equal((await counts())['sfx_medal.wav'], clearBefore['sfx_medal.wav'] + 1);
+  assert.equal((await counts())['sfx_clear.wav'], clearBefore['sfx_clear.wav']);
+  await page.waitForFunction(() => window.__clearMusic.length >= 15);
+  const clearMusic = await page.evaluate(() => {clearInterval(window.__clearSampler); return window.__clearMusic;});
+  assert.ok(clearMusic.every(gain => Math.abs(gain / musicBeforeClear - .65) < .002), 'ordinary completion retains 65% of BGM during playback');
+  await page.waitForFunction(before => window.__audio[3].paused && window.__audio[0].volume + window.__audio[1].volume >= before * .99, musicBeforeClear);
+  report.clearDucksMusic = true;
+  report.clearMusicRecovers = true;
   await page.locator('dialog [data-action="close"]').last().click();
 
   await uiClick(page, '[data-level="01-01.1"]');
