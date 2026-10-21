@@ -14,6 +14,7 @@
     "verify:ui": "node scripts/verify-ui.mjs",
     "package:mac": "bash mac/build.sh",
     "start:mac": "bash mac/build.sh --run",
+    "dmg:mac": "bash mac/make-dmg.sh",
     "package:win-sync": "npx -y node@22 win/package.mjs",
     "start:win-sync": "npm run build && electron win/main.cjs"
   },
